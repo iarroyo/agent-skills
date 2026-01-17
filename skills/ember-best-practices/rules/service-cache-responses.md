@@ -21,7 +21,7 @@ export default class UserService extends Service {
   
   async getCurrentUser() {
     // Fetches from API every time
-    return this.store.findRecord('user', 'me');
+    return this.store.request({ url: '/users/me' });
   }
 }
 ```
@@ -43,15 +43,16 @@ export default class UserService extends Service {
   
   async getCurrentUser() {
     if (!this.currentUser) {
-      this.currentUser = await this.store.findRecord('user', 'me');
+      const response = await this.store.request({ url: '/users/me' });
+      this.currentUser = response.content.data;
     }
     return this.currentUser;
   }
   
   async getUser(id) {
     if (!this.cache.has(id)) {
-      const user = await this.store.findRecord('user', id);
-      this.cache.set(id, user);
+      const response = await this.store.request({ url: `/users/${id}` });
+      this.cache.set(id, response.content.data);
     }
     return this.cache.get(id);
   }

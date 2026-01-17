@@ -2,11 +2,12 @@
   "version": "1.0.0",
   "organization": "Ember.js Community",
   "date": "January 2026",
-  "abstract": "Comprehensive performance optimization and accessibility guide for Ember.js applications, designed for AI agents and LLMs. Contains 30+ rules across 7 categories, prioritized by impact from critical (route loading optimization, build performance) to incremental (advanced patterns). Each rule includes detailed explanations, real-world examples comparing incorrect vs. correct implementations, and specific impact metrics to guide automated refactoring and code generation. Includes accessibility best practices leveraging ember-a11y-testing and other OSS tools.",
+  "abstract": "Comprehensive performance optimization and accessibility guide for Ember.js applications, designed for AI agents and LLMs. Contains 23 rules across 7 categories, prioritized by impact from critical (route loading optimization, build performance) to incremental (advanced patterns). Each rule includes detailed explanations, real-world examples comparing incorrect vs. correct implementations, and specific impact metrics to guide automated refactoring and code generation. Uses WarpDrive for modern data management and includes accessibility best practices leveraging ember-a11y-testing and other OSS tools.",
   "references": [
     "https://emberjs.com",
     "https://guides.emberjs.com",
     "https://guides.emberjs.com/release/accessibility/",
+    "https://warp-drive.io/",
     "https://github.com/ember-a11y/ember-a11y-testing",
     "https://github.com/embroider-build/embroider",
     "https://github.com/tracked-tools/tracked-toolbox",

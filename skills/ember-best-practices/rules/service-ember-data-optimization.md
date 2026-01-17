@@ -1,13 +1,13 @@
 ---
-title: Optimize Ember Data Queries
+title: Optimize WarpDrive Queries
 impact: MEDIUM-HIGH
 impactDescription: 40-70% reduction in API calls
-tags: ember-data, performance, api, optimization
+tags: warp-drive, performance, api, optimization
 ---
 
-## Optimize Ember Data Queries
+## Optimize WarpDrive Queries
 
-Use Ember Data's query features effectively to reduce API calls and load only the data you need.
+Use WarpDrive's request features effectively to reduce API calls and load only the data you need.
 
 **Incorrect (multiple queries, overfetching):**
 
@@ -18,10 +18,11 @@ export default class PostsRoute extends Route {
   
   async model() {
     // Loads all posts (could be thousands)
-    const posts = await this.store.findAll('post');
+    const response = await this.store.request({ url: '/posts' });
+    const posts = response.content.data;
     
     // Then filters in memory
-    return posts.filter(post => post.status === 'published');
+    return posts.filter(post => post.attributes.status === 'published');
   }
 }
 ```
@@ -40,25 +41,28 @@ export default class PostsRoute extends Route {
   
   model(params) {
     // Server-side filtering and pagination
-    return this.store.query('post', {
-      filter: {
-        status: 'published'
-      },
-      page: {
-        number: params.page || 1,
-        size: 20
-      },
-      include: 'author', // Sideload related data
-      fields: { // Sparse fieldsets
-        posts: 'title,excerpt,publishedAt,author',
-        users: 'name,avatar'
+    return this.store.request({
+      url: '/posts',
+      data: {
+        filter: {
+          status: 'published'
+        },
+        page: {
+          number: params.page || 1,
+          size: 20
+        },
+        include: 'author', // Sideload related data
+        fields: { // Sparse fieldsets
+          posts: 'title,excerpt,publishedAt,author',
+          users: 'name,avatar'
+        }
       }
     });
   }
 }
 ```
 
-**Use findRecord with includes for single records:**
+**Use request with includes for single records:**
 
 ```javascript
 // app/routes/post.js
@@ -66,15 +70,17 @@ export default class PostRoute extends Route {
   @service store;
   
   model(params) {
-    return this.store.findRecord('post', params.post_id, {
-      include: 'author,comments.user', // Nested relationships
-      reload: true // Force fresh data
+    return this.store.request({
+      url: `/posts/${params.post_id}`,
+      data: {
+        include: 'author,comments.user' // Nested relationships
+      }
     });
   }
 }
 ```
 
-**For frequently accessed data, use peek to avoid API calls:**
+**For frequently accessed data, use cache lookups:**
 
 ```javascript
 // app/components/user-badge.js
@@ -82,31 +88,41 @@ export default class UserBadgeComponent extends Component {
   @service store;
   
   get user() {
-    // Check store first, avoiding API call if already loaded
-    const cached = this.store.peekRecord('user', this.args.userId);
+    // Check cache first, avoiding API call if already loaded
+    const cached = this.store.cache.peek({
+      type: 'user',
+      id: this.args.userId
+    });
+    
     if (cached) {
       return cached;
     }
     
-    // Only fetch if not in store
-    return this.store.findRecord('user', this.args.userId);
+    // Only fetch if not in cache
+    return this.store.request({
+      url: `/users/${this.args.userId}`
+    });
   }
 }
 ```
 
-**Use adapterOptions for custom queries:**
+**Use request options for custom queries:**
 
 ```javascript
 model() {
-  return this.store.query('post', {
-    adapterOptions: {
+  return this.store.request({
+    url: '/posts',
+    data: {
       include: 'author,tags',
       customParam: 'value'
+    },
+    options: {
+      reload: true // Bypass cache
     }
   });
 }
 ```
 
-Efficient Ember Data usage reduces network overhead and improves application performance significantly.
+Efficient WarpDrive usage reduces network overhead and improves application performance significantly.
 
-Reference: [Ember Data Guides](https://guides.emberjs.com/release/models/)
+Reference: [WarpDrive Documentation](https://warp-drive.io/)

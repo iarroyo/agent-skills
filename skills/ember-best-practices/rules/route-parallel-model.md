@@ -20,9 +20,9 @@ export default class DashboardRoute extends Route {
   @service store;
 
   async model() {
-    const user = await this.store.findRecord('user', 'me');
-    const posts = await this.store.query('post', { recent: true });
-    const notifications = await this.store.query('notification', { unread: true });
+    const user = await this.store.request({ url: '/users/me' });
+    const posts = await this.store.request({ url: '/posts?recent=true' });
+    const notifications = await this.store.request({ url: '/notifications?unread=true' });
     
     return { user, posts, notifications };
   }
@@ -42,9 +42,9 @@ export default class DashboardRoute extends Route {
 
   model() {
     return hash({
-      user: this.store.findRecord('user', 'me'),
-      posts: this.store.query('post', { recent: true }),
-      notifications: this.store.query('notification', { unread: true })
+      user: this.store.request({ url: '/users/me' }),
+      posts: this.store.request({ url: '/posts?recent=true' }),
+      notifications: this.store.request({ url: '/notifications?unread=true' })
     });
   }
 }

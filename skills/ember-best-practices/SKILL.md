@@ -15,7 +15,7 @@ Comprehensive performance optimization and accessibility guide for Ember.js appl
 
 Reference these guidelines when:
 - Writing new Ember components or routes
-- Implementing data fetching with Ember Data
+- Implementing data fetching with WarpDrive
 - Reviewing code for performance issues
 - Refactoring existing Ember.js code
 - Optimizing bundle size or load times
@@ -66,7 +66,7 @@ Reference these guidelines when:
 
 - `service-cache-responses` - Cache API responses in services
 - `service-shared-state` - Use services for shared state
-- `service-ember-data-optimization` - Optimize Ember Data queries
+- `service-ember-data-optimization` - Optimize WarpDrive queries
 
 ### 6. Template Optimization (MEDIUM)
 

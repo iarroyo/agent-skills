@@ -15,7 +15,7 @@ Implement loading substates to show immediate feedback while data loads, prevent
 // app/routes/posts.js
 export default class PostsRoute extends Route {
   async model() {
-    return this.store.findAll('post');
+    return this.store.request({ url: '/posts' });
   }
 }
 ```
@@ -39,7 +39,7 @@ import { LoadingSpinner } from './loading-spinner';
 export default class PostsRoute extends Route {
   model() {
     // Return promise directly - Ember will show posts-loading template
-    return this.store.findAll('post');
+    return this.store.request({ url: '/posts' });
   }
 }
 ```
