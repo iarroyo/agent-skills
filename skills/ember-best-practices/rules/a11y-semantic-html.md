@@ -11,58 +11,55 @@ Use semantic HTML elements and proper ARIA attributes to make your application a
 
 **Incorrect (divs with insufficient semantics):**
 
-```handlebars
-<div class="button" {{on "click" this.submit}}>
-  Submit
-</div>
+```javascript
+// app/components/example.gjs
+<template>
+  <div class="button" {{on "click" this.submit}}>
+    Submit
+  </div>
 
-<div class="nav">
-  <div class="nav-item">Home</div>
-  <div class="nav-item">About</div>
-</div>
+  <div class="nav">
+    <div class="nav-item">Home</div>
+    <div class="nav-item">About</div>
+  </div>
 
-<div class="alert">
-  {{this.message}}
-</div>
+  <div class="alert">
+    {{this.message}}
+  </div>
+</template>
 ```
 
 **Correct (semantic HTML with proper ARIA):**
 
-```handlebars
-<button type="submit" {{on "click" this.submit}}>
-  Submit
-</button>
+```javascript
+// app/components/example.gjs
+import { LinkTo } from '@ember/routing';
 
-<nav aria-label="Main navigation">
-  <ul>
-    <li><LinkTo @route="index">Home</LinkTo></li>
-    <li><LinkTo @route="about">About</LinkTo></li>
-  </ul>
-</nav>
+<template>
+  <button type="submit" {{on "click" this.submit}}>
+    Submit
+  </button>
 
-<div role="alert" aria-live="polite" aria-atomic="true">
-  {{this.message}}
-</div>
+  <nav aria-label="Main navigation">
+    <ul>
+      <li><LinkTo @route="index">Home</LinkTo></li>
+      <li><LinkTo @route="about">About</LinkTo></li>
+    </ul>
+  </nav>
+
+  <div role="alert" aria-live="polite" aria-atomic="true">
+    {{this.message}}
+  </div>
+</template>
 ```
 
 **For interactive custom elements:**
 
-```handlebars
-<div 
-  role="button" 
-  tabindex="0"
-  {{on "click" this.handleClick}}
-  {{on "keydown" this.handleKeyDown}}
-  aria-label="Close dialog"
->
-  <XIcon />
-</div>
-```
-
 ```javascript
-// app/components/custom-button.js
+// app/components/custom-button.gjs
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import XIcon from './x-icon';
 
 export default class CustomButtonComponent extends Component {
   @action
@@ -78,6 +75,18 @@ export default class CustomButtonComponent extends Component {
   handleClick() {
     this.args.onClick?.();
   }
+
+  <template>
+    <div 
+      role="button" 
+      tabindex="0"
+      {{on "click" this.handleClick}}
+      {{on "keydown" this.handleKeyDown}}
+      aria-label="Close dialog"
+    >
+      <XIcon />
+    </div>
+  </template>
 }
 ```
 

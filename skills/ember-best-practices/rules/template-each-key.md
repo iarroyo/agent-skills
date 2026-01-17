@@ -11,44 +11,60 @@ Always use the `@key` parameter with `{{#each}}` for lists of objects to help Em
 
 **Incorrect (no key):**
 
-```handlebars
-<ul>
-  {{#each this.users as |user|}}
-    <li>
-      <UserCard @user={{user}} />
-    </li>
-  {{/each}}
-</ul>
+```javascript
+// app/components/user-list.gjs
+import UserCard from './user-card';
+
+<template>
+  <ul>
+    {{#each this.users as |user|}}
+      <li>
+        <UserCard @user={{user}} />
+      </li>
+    {{/each}}
+  </ul>
+</template>
 ```
 
 **Correct (with key):**
 
-```handlebars
-<ul>
-  {{#each this.users key="id" as |user|}}
-    <li>
-      <UserCard @user={{user}} />
-    </li>
-  {{/each}}
-</ul>
+```javascript
+// app/components/user-list.gjs
+import UserCard from './user-card';
+
+<template>
+  <ul>
+    {{#each this.users key="id" as |user|}}
+      <li>
+        <UserCard @user={{user}} />
+      </li>
+    {{/each}}
+  </ul>
+</template>
 ```
 
 **For arrays without stable IDs, use @identity:**
 
-```handlebars
-{{#each this.tags key="@identity" as |tag|}}
-  <span class="tag">{{tag}}</span>
-{{/each}}
+```javascript
+// app/components/tag-list.gjs
+<template>
+  {{#each this.tags key="@identity" as |tag|}}
+    <span class="tag">{{tag}}</span>
+  {{/each}}
+</template>
 ```
 
 **For complex scenarios with @index:**
 
-```handlebars
-{{#each this.items key="@index" as |item index|}}
-  <div data-index={{index}}>
-    {{item.name}}
-  </div>
-{{/each}}
+```javascript
+// app/components/item-list.gjs
+<template>
+  {{#each this.items key="@index" as |item index|}}
+    <div data-index={{index}}>
+      {{item.name}}
+    </div>
+  {{/each}}
+</template>
 ```
 
 Using proper keys allows Ember's rendering engine to efficiently update, reorder, and remove items without re-rendering the entire list.

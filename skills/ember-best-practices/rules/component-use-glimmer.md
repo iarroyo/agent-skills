@@ -34,23 +34,21 @@ export default Component.extend({
 **Correct (Glimmer component):**
 
 ```javascript
-// app/components/user-card.js
+// app/components/user-card.gjs
 import Component from '@glimmer/component';
-import { tracked } from '@glimmer/tracking';
 
 export default class UserCardComponent extends Component {
   get fullName() {
     return `${this.args.user.firstName} ${this.args.user.lastName}`;
   }
-}
-```
 
-```handlebars
-{{! app/components/user-card.hbs }}
-<div class="user-card">
-  <h3>{{this.fullName}}</h3>
-  <p>{{@user.email}}</p>
-</div>
+  <template>
+    <div class="user-card">
+      <h3>{{this.fullName}}</h3>
+      <p>{{@user.email}}</p>
+    </div>
+  </template>
+}
 ```
 
 Glimmer components are 30-50% faster, have cleaner APIs, and integrate better with tracked properties.

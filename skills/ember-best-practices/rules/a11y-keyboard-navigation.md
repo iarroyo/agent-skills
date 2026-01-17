@@ -11,59 +11,29 @@ Ensure all interactive elements are keyboard accessible and focus management is 
 
 **Incorrect (no keyboard support):**
 
-```handlebars
-<div class="dropdown" {{on "click" this.toggleMenu}}>
-  Menu
-  {{#if this.isOpen}}
-    <div class="dropdown-menu">
-      <div {{on "click" this.selectOption}}>Option 1</div>
-      <div {{on "click" this.selectOption}}>Option 2</div>
-    </div>
-  {{/if}}
-</div>
+```javascript
+// app/components/dropdown.gjs
+<template>
+  <div class="dropdown" {{on "click" this.toggleMenu}}>
+    Menu
+    {{#if this.isOpen}}
+      <div class="dropdown-menu">
+        <div {{on "click" this.selectOption}}>Option 1</div>
+        <div {{on "click" this.selectOption}}>Option 2</div>
+      </div>
+    {{/if}}
+  </div>
+</template>
 ```
 
 **Correct (full keyboard support):**
 
-```handlebars
-<div class="dropdown">
-  <button 
-    type="button"
-    {{on "click" this.toggleMenu}}
-    {{on "keydown" this.handleButtonKeyDown}}
-    aria-haspopup="true"
-    aria-expanded="{{this.isOpen}}"
-  >
-    Menu
-  </button>
-  
-  {{#if this.isOpen}}
-    <ul 
-      class="dropdown-menu" 
-      role="menu"
-      {{did-insert this.focusFirstItem}}
-      {{on "keydown" this.handleMenuKeyDown}}
-    >
-      <li role="menuitem">
-        <button type="button" {{on "click" (fn this.selectOption "1")}}>
-          Option 1
-        </button>
-      </li>
-      <li role="menuitem">
-        <button type="button" {{on "click" (fn this.selectOption "2")}}>
-          Option 2
-        </button>
-      </li>
-    </ul>
-  {{/if}}
-</div>
-```
-
 ```javascript
-// app/components/dropdown.js
+// app/components/dropdown.gjs
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { fn } from '@ember/helper';
 
 export default class DropdownComponent extends Component {
   @tracked isOpen = false;
@@ -114,6 +84,40 @@ export default class DropdownComponent extends Component {
     this.args.onSelect?.(value);
     this.isOpen = false;
   }
+
+  <template>
+    <div class="dropdown">
+      <button 
+        type="button"
+        {{on "click" this.toggleMenu}}
+        {{on "keydown" this.handleButtonKeyDown}}
+        aria-haspopup="true"
+        aria-expanded="{{this.isOpen}}"
+      >
+        Menu
+      </button>
+      
+      {{#if this.isOpen}}
+        <ul 
+          class="dropdown-menu" 
+          role="menu"
+          {{did-insert this.focusFirstItem}}
+          {{on "keydown" this.handleMenuKeyDown}}
+        >
+          <li role="menuitem">
+            <button type="button" {{on "click" (fn this.selectOption "1")}}>
+              Option 1
+            </button>
+          </li>
+          <li role="menuitem">
+            <button type="button" {{on "click" (fn this.selectOption "2")}}>
+              Option 2
+            </button>
+          </li>
+        </ul>
+      {{/if}}
+    </div>
+  </template>
 }
 ```
 
@@ -123,19 +127,24 @@ export default class DropdownComponent extends Component {
 ember install ember-focus-trap
 ```
 
-```handlebars
-{{#if this.showModal}}
-  <FocusTrap 
-    @isActive={{true}}
-    @initialFocus="#modal-title"
-  >
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title">{{@title}}</h2>
-      {{yield}}
-      <button type="button" {{on "click" this.closeModal}}>Close</button>
-    </div>
-  </FocusTrap>
-{{/if}}
+```javascript
+// app/components/modal.gjs
+import FocusTrap from 'ember-focus-trap/components/focus-trap';
+
+<template>
+  {{#if this.showModal}}
+    <FocusTrap 
+      @isActive={{true}}
+      @initialFocus="#modal-title"
+    >
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 id="modal-title">{{@title}}</h2>
+        {{yield}}
+        <button type="button" {{on "click" this.closeModal}}>Close</button>
+      </div>
+    </FocusTrap>
+  {{/if}}
+</template>
 ```
 
 Proper keyboard navigation ensures all users can interact with your application effectively.

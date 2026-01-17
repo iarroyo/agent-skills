@@ -22,12 +22,16 @@ export default class PostsRoute extends Route {
 
 **Correct (with loading substate):**
 
-```handlebars
-{{! app/templates/posts-loading.hbs }}
-<div class="loading-spinner" role="status" aria-live="polite">
-  <span class="sr-only">Loading posts...</span>
-  <LoadingSpinner />
-</div>
+```javascript
+// app/routes/posts-loading.gjs
+import { LoadingSpinner } from './loading-spinner';
+
+<template>
+  <div class="loading-spinner" role="status" aria-live="polite">
+    <span class="sr-only">Loading posts...</span>
+    <LoadingSpinner />
+  </div>
+</template>
 ```
 
 ```javascript
@@ -40,4 +44,4 @@ export default class PostsRoute extends Route {
 }
 ```
 
-Ember automatically renders `{route-name}-loading` templates while the model promise resolves, providing better UX without extra code.
+Ember automatically renders `{route-name}-loading` route templates while the model promise resolves, providing better UX without extra code.

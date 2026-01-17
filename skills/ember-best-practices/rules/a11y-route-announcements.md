@@ -79,17 +79,19 @@ export default class ApplicationRoute extends Route {
 }
 ```
 
-```handlebars
-{{! app/templates/application.hbs }}
-<div 
-  id="route-announcement" 
-  role="status" 
-  aria-live="polite" 
-  aria-atomic="true"
-  class="sr-only"
-></div>
+```javascript
+// app/routes/application.gjs
+<template>
+  <div 
+    id="route-announcement" 
+    role="status" 
+    aria-live="polite" 
+    aria-atomic="true"
+    class="sr-only"
+  ></div>
 
-{{outlet}}
+  {{outlet}}
+</template>
 ```
 
 ```css
@@ -113,13 +115,17 @@ export default class ApplicationRoute extends Route {
 ember install ember-page-title
 ```
 
-```handlebars
-{{! app/templates/dashboard.hbs }}
-{{page-title "Dashboard"}}
+```javascript
+// app/routes/dashboard.gjs
+import { pageTitle } from 'ember-page-title';
 
-<div class="dashboard">
-  {{outlet}}
-</div>
+<template>
+  {{pageTitle "Dashboard"}}
+
+  <div class="dashboard">
+    {{outlet}}
+  </div>
+</template>
 ```
 
 Route announcements ensure screen reader users know when navigation occurs, improving the overall accessibility experience.

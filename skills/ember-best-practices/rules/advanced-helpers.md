@@ -56,12 +56,22 @@ function formatRelativeDate([date]) {
 export default helper(formatRelativeDate);
 ```
 
-```handlebars
-{{! app/components/user-card.hbs }}
-<p>Joined: {{format-relative-date @user.createdAt}}</p>
+```javascript
+// app/components/user-card.gjs
+import { formatRelativeDate } from '../helpers/format-relative-date';
 
-{{! app/components/post-card.hbs }}
-<p>Posted: {{format-relative-date @post.createdAt}}</p>
+<template>
+  <p>Joined: {{formatRelativeDate @user.createdAt}}</p>
+</template>
+```
+
+```javascript
+// app/components/post-card.gjs
+import { formatRelativeDate } from '../helpers/format-relative-date';
+
+<template>
+  <p>Posted: {{formatRelativeDate @post.createdAt}}</p>
+</template>
 ```
 
 **For helpers with state, use class-based helpers:**

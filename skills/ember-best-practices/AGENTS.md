@@ -20,6 +20,7 @@ Comprehensive performance optimization and accessibility guide for Ember.js appl
 
 ---
 
+
 ## 1. Route Loading and Data Fetching
 
 **Impact:** CRITICAL
@@ -95,12 +96,16 @@ export default class PostsRoute extends Route {
 
 **Correct (with loading substate):**
 
-```handlebars
-{{! app/templates/posts-loading.hbs }}
-<div class="loading-spinner" role="status" aria-live="polite">
-  <span class="sr-only">Loading posts...</span>
-  <LoadingSpinner />
-</div>
+```javascript
+// app/routes/posts-loading.gjs
+import { LoadingSpinner } from './loading-spinner';
+
+<template>
+  <div class="loading-spinner" role="status" aria-live="polite">
+    <span class="sr-only">Loading posts...</span>
+    <LoadingSpinner />
+  </div>
+</template>
 ```
 
 ```javascript
@@ -113,7 +118,7 @@ export default class PostsRoute extends Route {
 }
 ```
 
-Ember automatically renders `{route-name}-loading` templates while the model promise resolves, providing better UX without extra code.
+Ember automatically renders `{route-name}-loading` route templates while the model promise resolves, providing better UX without extra code.
 
 ---
 
@@ -163,8 +168,6 @@ export default class DashboardRoute extends Route {
 ```
 
 Using `hash()` from RSVP allows Ember to resolve all promises concurrently, significantly reducing load time.
-
----
 
 ## 2. Build and Bundle Optimization
 
@@ -342,8 +345,6 @@ export default helper(async function ensureLoaded([modulePath]) {
 ```
 
 Dynamic imports reduce initial bundle size by 30-50%, improving Time to Interactive.
-
----
 
 ## 3. Component and Reactivity Optimization
 
@@ -550,30 +551,26 @@ export default Component.extend({
 **Correct (Glimmer component):**
 
 ```javascript
-// app/components/user-card.js
+// app/components/user-card.gjs
 import Component from '@glimmer/component';
-import { tracked } from '@glimmer/tracking';
 
 export default class UserCardComponent extends Component {
   get fullName() {
     return `${this.args.user.firstName} ${this.args.user.lastName}`;
   }
-}
-```
 
-```handlebars
-{{! app/components/user-card.hbs }}
-<div class="user-card">
-  <h3>{{this.fullName}}</h3>
-  <p>{{@user.email}}</p>
-</div>
+  <template>
+    <div class="user-card">
+      <h3>{{this.fullName}}</h3>
+      <p>{{@user.email}}</p>
+    </div>
+  </template>
+}
 ```
 
 Glimmer components are 30-50% faster, have cleaner APIs, and integrate better with tracked properties.
 
 Reference: [Glimmer Components](https://guides.emberjs.com/release/components/component-state-and-actions/)
-
----
 
 ## 4. Accessibility Best Practices
 
@@ -656,65 +653,71 @@ All form inputs must have associated labels, and validation errors should be ann
 
 **Incorrect (missing labels and announcements):**
 
-```handlebars
-<form {{on "submit" this.handleSubmit}}>
-  <input 
-    type="email" 
-    value={{this.email}}
-    {{on "input" this.updateEmail}}
-    placeholder="Email"
-  />
-  
-  {{#if this.emailError}}
-    <span class="error">{{this.emailError}}</span>
-  {{/if}}
-  
-  <button type="submit">Submit</button>
-</form>
+```javascript
+// app/components/form.gjs
+<template>
+  <form {{on "submit" this.handleSubmit}}>
+    <input 
+      type="email" 
+      value={{this.email}}
+      {{on "input" this.updateEmail}}
+      placeholder="Email"
+    />
+    
+    {{#if this.emailError}}
+      <span class="error">{{this.emailError}}</span>
+    {{/if}}
+    
+    <button type="submit">Submit</button>
+  </form>
+</template>
 ```
 
 **Correct (with labels and announcements):**
 
-```handlebars
-<form {{on "submit" this.handleSubmit}}>
-  <div class="form-group">
-    <label for="email-input">
-      Email Address
-      {{#if this.isEmailRequired}}
-        <span aria-label="required">*</span>
+```javascript
+// app/components/form.gjs
+<template>
+  <form {{on "submit" this.handleSubmit}}>
+    <div class="form-group">
+      <label for="email-input">
+        Email Address
+        {{#if this.isEmailRequired}}
+          <span aria-label="required">*</span>
+        {{/if}}
+      </label>
+      
+      <input 
+        id="email-input"
+        type="email" 
+        value={{this.email}}
+        {{on "input" this.updateEmail}}
+        aria-describedby={{if this.emailError "email-error"}}
+        aria-invalid={{if this.emailError "true"}}
+        required={{this.isEmailRequired}}
+      />
+      
+      {{#if this.emailError}}
+        <span 
+          id="email-error" 
+          class="error"
+          role="alert"
+          aria-live="polite"
+        >
+          {{this.emailError}}
+        </span>
       {{/if}}
-    </label>
+    </div>
     
-    <input 
-      id="email-input"
-      type="email" 
-      value={{this.email}}
-      {{on "input" this.updateEmail}}
-      aria-describedby={{if this.emailError "email-error"}}
-      aria-invalid={{if this.emailError "true"}}
-      required={{this.isEmailRequired}}
-    />
-    
-    {{#if this.emailError}}
-      <span 
-        id="email-error" 
-        class="error"
-        role="alert"
-        aria-live="polite"
-      >
-        {{this.emailError}}
-      </span>
-    {{/if}}
-  </div>
-  
-  <button type="submit" disabled={{this.isSubmitting}}>
-    {{#if this.isSubmitting}}
-      <span aria-live="polite">Submitting...</span>
-    {{else}}
-      Submit
-    {{/if}}
-  </button>
-</form>
+    <button type="submit" disabled={{this.isSubmitting}}>
+      {{#if this.isSubmitting}}
+        <span aria-live="polite">Submitting...</span>
+      {{else}}
+        Submit
+      {{/if}}
+    </button>
+  </form>
+</template>
 ```
 
 **For complex forms, use ember-changeset-validations:**
@@ -760,59 +763,29 @@ Ensure all interactive elements are keyboard accessible and focus management is 
 
 **Incorrect (no keyboard support):**
 
-```handlebars
-<div class="dropdown" {{on "click" this.toggleMenu}}>
-  Menu
-  {{#if this.isOpen}}
-    <div class="dropdown-menu">
-      <div {{on "click" this.selectOption}}>Option 1</div>
-      <div {{on "click" this.selectOption}}>Option 2</div>
-    </div>
-  {{/if}}
-</div>
+```javascript
+// app/components/dropdown.gjs
+<template>
+  <div class="dropdown" {{on "click" this.toggleMenu}}>
+    Menu
+    {{#if this.isOpen}}
+      <div class="dropdown-menu">
+        <div {{on "click" this.selectOption}}>Option 1</div>
+        <div {{on "click" this.selectOption}}>Option 2</div>
+      </div>
+    {{/if}}
+  </div>
+</template>
 ```
 
 **Correct (full keyboard support):**
 
-```handlebars
-<div class="dropdown">
-  <button 
-    type="button"
-    {{on "click" this.toggleMenu}}
-    {{on "keydown" this.handleButtonKeyDown}}
-    aria-haspopup="true"
-    aria-expanded="{{this.isOpen}}"
-  >
-    Menu
-  </button>
-  
-  {{#if this.isOpen}}
-    <ul 
-      class="dropdown-menu" 
-      role="menu"
-      {{did-insert this.focusFirstItem}}
-      {{on "keydown" this.handleMenuKeyDown}}
-    >
-      <li role="menuitem">
-        <button type="button" {{on "click" (fn this.selectOption "1")}}>
-          Option 1
-        </button>
-      </li>
-      <li role="menuitem">
-        <button type="button" {{on "click" (fn this.selectOption "2")}}>
-          Option 2
-        </button>
-      </li>
-    </ul>
-  {{/if}}
-</div>
-```
-
 ```javascript
-// app/components/dropdown.js
+// app/components/dropdown.gjs
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { fn } from '@ember/helper';
 
 export default class DropdownComponent extends Component {
   @tracked isOpen = false;
@@ -863,6 +836,40 @@ export default class DropdownComponent extends Component {
     this.args.onSelect?.(value);
     this.isOpen = false;
   }
+
+  <template>
+    <div class="dropdown">
+      <button 
+        type="button"
+        {{on "click" this.toggleMenu}}
+        {{on "keydown" this.handleButtonKeyDown}}
+        aria-haspopup="true"
+        aria-expanded="{{this.isOpen}}"
+      >
+        Menu
+      </button>
+      
+      {{#if this.isOpen}}
+        <ul 
+          class="dropdown-menu" 
+          role="menu"
+          {{did-insert this.focusFirstItem}}
+          {{on "keydown" this.handleMenuKeyDown}}
+        >
+          <li role="menuitem">
+            <button type="button" {{on "click" (fn this.selectOption "1")}}>
+              Option 1
+            </button>
+          </li>
+          <li role="menuitem">
+            <button type="button" {{on "click" (fn this.selectOption "2")}}>
+              Option 2
+            </button>
+          </li>
+        </ul>
+      {{/if}}
+    </div>
+  </template>
 }
 ```
 
@@ -872,19 +879,24 @@ export default class DropdownComponent extends Component {
 ember install ember-focus-trap
 ```
 
-```handlebars
-{{#if this.showModal}}
-  <FocusTrap 
-    @isActive={{true}}
-    @initialFocus="#modal-title"
-  >
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title">{{@title}}</h2>
-      {{yield}}
-      <button type="button" {{on "click" this.closeModal}}>Close</button>
-    </div>
-  </FocusTrap>
-{{/if}}
+```javascript
+// app/components/modal.gjs
+import FocusTrap from 'ember-focus-trap/components/focus-trap';
+
+<template>
+  {{#if this.showModal}}
+    <FocusTrap 
+      @isActive={{true}}
+      @initialFocus="#modal-title"
+    >
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 id="modal-title">{{@title}}</h2>
+        {{yield}}
+        <button type="button" {{on "click" this.closeModal}}>Close</button>
+      </div>
+    </FocusTrap>
+  {{/if}}
+</template>
 ```
 
 Proper keyboard navigation ensures all users can interact with your application effectively.
@@ -967,17 +979,19 @@ export default class ApplicationRoute extends Route {
 }
 ```
 
-```handlebars
-{{! app/templates/application.hbs }}
-<div 
-  id="route-announcement" 
-  role="status" 
-  aria-live="polite" 
-  aria-atomic="true"
-  class="sr-only"
-></div>
+```javascript
+// app/routes/application.gjs
+<template>
+  <div 
+    id="route-announcement" 
+    role="status" 
+    aria-live="polite" 
+    aria-atomic="true"
+    class="sr-only"
+  ></div>
 
-{{outlet}}
+  {{outlet}}
+</template>
 ```
 
 ```css
@@ -1001,13 +1015,17 @@ export default class ApplicationRoute extends Route {
 ember install ember-page-title
 ```
 
-```handlebars
-{{! app/templates/dashboard.hbs }}
-{{page-title "Dashboard"}}
+```javascript
+// app/routes/dashboard.gjs
+import { pageTitle } from 'ember-page-title';
 
-<div class="dashboard">
-  {{outlet}}
-</div>
+<template>
+  {{pageTitle "Dashboard"}}
+
+  <div class="dashboard">
+    {{outlet}}
+  </div>
+</template>
 ```
 
 Route announcements ensure screen reader users know when navigation occurs, improving the overall accessibility experience.
@@ -1022,58 +1040,55 @@ Use semantic HTML elements and proper ARIA attributes to make your application a
 
 **Incorrect (divs with insufficient semantics):**
 
-```handlebars
-<div class="button" {{on "click" this.submit}}>
-  Submit
-</div>
+```javascript
+// app/components/example.gjs
+<template>
+  <div class="button" {{on "click" this.submit}}>
+    Submit
+  </div>
 
-<div class="nav">
-  <div class="nav-item">Home</div>
-  <div class="nav-item">About</div>
-</div>
+  <div class="nav">
+    <div class="nav-item">Home</div>
+    <div class="nav-item">About</div>
+  </div>
 
-<div class="alert">
-  {{this.message}}
-</div>
+  <div class="alert">
+    {{this.message}}
+  </div>
+</template>
 ```
 
 **Correct (semantic HTML with proper ARIA):**
 
-```handlebars
-<button type="submit" {{on "click" this.submit}}>
-  Submit
-</button>
+```javascript
+// app/components/example.gjs
+import { LinkTo } from '@ember/routing';
 
-<nav aria-label="Main navigation">
-  <ul>
-    <li><LinkTo @route="index">Home</LinkTo></li>
-    <li><LinkTo @route="about">About</LinkTo></li>
-  </ul>
-</nav>
+<template>
+  <button type="submit" {{on "click" this.submit}}>
+    Submit
+  </button>
 
-<div role="alert" aria-live="polite" aria-atomic="true">
-  {{this.message}}
-</div>
+  <nav aria-label="Main navigation">
+    <ul>
+      <li><LinkTo @route="index">Home</LinkTo></li>
+      <li><LinkTo @route="about">About</LinkTo></li>
+    </ul>
+  </nav>
+
+  <div role="alert" aria-live="polite" aria-atomic="true">
+    {{this.message}}
+  </div>
+</template>
 ```
 
 **For interactive custom elements:**
 
-```handlebars
-<div 
-  role="button" 
-  tabindex="0"
-  {{on "click" this.handleClick}}
-  {{on "keydown" this.handleKeyDown}}
-  aria-label="Close dialog"
->
-  <XIcon />
-</div>
-```
-
 ```javascript
-// app/components/custom-button.js
+// app/components/custom-button.gjs
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import XIcon from './x-icon';
 
 export default class CustomButtonComponent extends Component {
   @action
@@ -1089,14 +1104,24 @@ export default class CustomButtonComponent extends Component {
   handleClick() {
     this.args.onClick?.();
   }
+
+  <template>
+    <div 
+      role="button" 
+      tabindex="0"
+      {{on "click" this.handleClick}}
+      {{on "keydown" this.handleKeyDown}}
+      aria-label="Close dialog"
+    >
+      <XIcon />
+    </div>
+  </template>
 }
 ```
 
 Always use native semantic elements when possible. When creating custom interactive elements, ensure they're keyboard accessible and have proper ARIA attributes.
 
 Reference: [Ember Accessibility Guide](https://guides.emberjs.com/release/accessibility/)
-
----
 
 ## 5. Service and State Management
 
@@ -1312,19 +1337,18 @@ Use services to manage shared state across components and routes instead of pass
 **Incorrect (prop drilling):**
 
 ```javascript
-// app/routes/dashboard.js
+// app/routes/dashboard.gjs
 export default class DashboardRoute extends Route {
   model() {
     return { currentTheme: 'dark' };
   }
-}
-```
 
-```handlebars
-{{! app/templates/dashboard.hbs }}
-<Header @theme={{@model.currentTheme}} />
-<Sidebar @theme={{@model.currentTheme}} />
-<MainContent @theme={{@model.currentTheme}} />
+  <template>
+    <Header @theme={{@model.currentTheme}} />
+    <Sidebar @theme={{@model.currentTheme}} />
+    <MainContent @theme={{@model.currentTheme}} />
+  </template>
+}
 ```
 
 **Correct (using service):**
@@ -1419,8 +1443,6 @@ export default class CartService extends Service {
 
 Reference: [Ember Services](https://guides.emberjs.com/release/services/)
 
----
-
 ## 6. Template Optimization
 
 **Impact:** MEDIUM
@@ -1432,22 +1454,25 @@ Move expensive computations from templates to cached getters in the component cl
 
 **Incorrect (computation in template):**
 
-```handlebars
-<div class="stats">
-  <p>Total: {{sum (map this.items "price")}}</p>
-  <p>Average: {{div (sum (map this.items "price")) this.items.length}}</p>
-  <p>Max: {{max (map this.items "price")}}</p>
-  
-  {{#each (sort-by "name" this.items) as |item|}}
-    <div>{{item.name}}: {{multiply item.price item.quantity}}</div>
-  {{/each}}
-</div>
+```javascript
+// app/components/stats.gjs
+<template>
+  <div class="stats">
+    <p>Total: {{sum (map this.items "price")}}</p>
+    <p>Average: {{div (sum (map this.items "price")) this.items.length}}</p>
+    <p>Max: {{max (map this.items "price")}}</p>
+    
+    {{#each (sort-by "name" this.items) as |item|}}
+      <div>{{item.name}}: {{multiply item.price item.quantity}}</div>
+    {{/each}}
+  </div>
+</template>
 ```
 
 **Correct (computation in component):**
 
 ```javascript
-// app/components/stats.js
+// app/components/stats.gjs
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 
@@ -1483,19 +1508,19 @@ export default class StatsComponent extends Component {
       total: item.price * item.quantity
     }));
   }
-}
-```
 
-```handlebars
-<div class="stats">
-  <p>Total: {{this.total}}</p>
-  <p>Average: {{this.average}}</p>
-  <p>Max: {{this.maxPrice}}</p>
-  
-  {{#each this.itemsWithTotal key="id" as |item|}}
-    <div>{{item.name}}: {{item.total}}</div>
-  {{/each}}
-</div>
+  <template>
+    <div class="stats">
+      <p>Total: {{this.total}}</p>
+      <p>Average: {{this.average}}</p>
+      <p>Max: {{this.maxPrice}}</p>
+      
+      {{#each this.itemsWithTotal key="id" as |item|}}
+        <div>{{item.name}}: {{item.total}}</div>
+      {{/each}}
+    </div>
+  </template>
+}
 ```
 
 Moving computations to cached getters ensures they run only when dependencies change, not on every render.
@@ -1508,44 +1533,60 @@ Always use the `@key` parameter with `{{#each}}` for lists of objects to help Em
 
 **Incorrect (no key):**
 
-```handlebars
-<ul>
-  {{#each this.users as |user|}}
-    <li>
-      <UserCard @user={{user}} />
-    </li>
-  {{/each}}
-</ul>
+```javascript
+// app/components/user-list.gjs
+import UserCard from './user-card';
+
+<template>
+  <ul>
+    {{#each this.users as |user|}}
+      <li>
+        <UserCard @user={{user}} />
+      </li>
+    {{/each}}
+  </ul>
+</template>
 ```
 
 **Correct (with key):**
 
-```handlebars
-<ul>
-  {{#each this.users key="id" as |user|}}
-    <li>
-      <UserCard @user={{user}} />
-    </li>
-  {{/each}}
-</ul>
+```javascript
+// app/components/user-list.gjs
+import UserCard from './user-card';
+
+<template>
+  <ul>
+    {{#each this.users key="id" as |user|}}
+      <li>
+        <UserCard @user={{user}} />
+      </li>
+    {{/each}}
+  </ul>
+</template>
 ```
 
 **For arrays without stable IDs, use @identity:**
 
-```handlebars
-{{#each this.tags key="@identity" as |tag|}}
-  <span class="tag">{{tag}}</span>
-{{/each}}
+```javascript
+// app/components/tag-list.gjs
+<template>
+  {{#each this.tags key="@identity" as |tag|}}
+    <span class="tag">{{tag}}</span>
+  {{/each}}
+</template>
 ```
 
 **For complex scenarios with @index:**
 
-```handlebars
-{{#each this.items key="@index" as |item index|}}
-  <div data-index={{index}}>
-    {{item.name}}
-  </div>
-{{/each}}
+```javascript
+// app/components/item-list.gjs
+<template>
+  {{#each this.items key="@index" as |item index|}}
+    <div data-index={{index}}>
+      {{item.name}}
+    </div>
+  {{/each}}
+</template>
 ```
 
 Using proper keys allows Ember's rendering engine to efficiently update, reorder, and remove items without re-rendering the entire list.
@@ -1566,67 +1607,74 @@ Use `{{#let}}` to compute expensive values once and reuse them in the template i
 
 **Incorrect (recomputes on every reference):**
 
-```handlebars
-<div class="user-card">
-  {{#if (and this.user.isActive (not this.user.isDeleted))}}
-    <h3>{{this.user.fullName}}</h3>
-    <p>Status: Active</p>
-  {{/if}}
-  
-  {{#if (and this.user.isActive (not this.user.isDeleted))}}
-    <button {{on "click" this.editUser}}>Edit</button>
-  {{/if}}
-  
-  {{#if (and this.user.isActive (not this.user.isDeleted))}}
-    <button {{on "click" this.deleteUser}}>Delete</button>
-  {{/if}}
-</div>
-```
-
-**Correct (compute once, reuse):**
-
-```handlebars
-{{#let (and this.user.isActive (not this.user.isDeleted)) as |isEditable|}}
+```javascript
+// app/components/user-card.gjs
+<template>
   <div class="user-card">
-    {{#if isEditable}}
+    {{#if (and this.user.isActive (not this.user.isDeleted))}}
       <h3>{{this.user.fullName}}</h3>
       <p>Status: Active</p>
     {{/if}}
     
-    {{#if isEditable}}
+    {{#if (and this.user.isActive (not this.user.isDeleted))}}
       <button {{on "click" this.editUser}}>Edit</button>
     {{/if}}
     
-    {{#if isEditable}}
+    {{#if (and this.user.isActive (not this.user.isDeleted))}}
       <button {{on "click" this.deleteUser}}>Delete</button>
     {{/if}}
   </div>
-{{/let}}
+</template>
+```
+
+**Correct (compute once, reuse):**
+
+```javascript
+// app/components/user-card.gjs
+<template>
+  {{#let (and this.user.isActive (not this.user.isDeleted)) as |isEditable|}}
+    <div class="user-card">
+      {{#if isEditable}}
+        <h3>{{this.user.fullName}}</h3>
+        <p>Status: Active</p>
+      {{/if}}
+      
+      {{#if isEditable}}
+        <button {{on "click" this.editUser}}>Edit</button>
+      {{/if}}
+      
+      {{#if isEditable}}
+        <button {{on "click" this.deleteUser}}>Delete</button>
+      {{/if}}
+    </div>
+  {{/let}}
+</template>
 ```
 
 **Multiple values:**
 
-```handlebars
-{{#let 
-  (this.calculateTotal this.items)
-  (this.formatCurrency this.total)
-  (this.hasDiscount this.user)
-  as |total formattedTotal showDiscount|
-}}
-  <div class="checkout">
-    <p>Total: {{formattedTotal}}</p>
-    
-    {{#if showDiscount}}
-      <p>Original: {{total}}</p>
-      <p>Discount Applied!</p>
-    {{/if}}
-  </div>
-{{/let}}
+```javascript
+// app/components/checkout.gjs
+<template>
+  {{#let 
+    (this.calculateTotal this.items)
+    (this.formatCurrency this.total)
+    (this.hasDiscount this.user)
+    as |total formattedTotal showDiscount|
+  }}
+    <div class="checkout">
+      <p>Total: {{formattedTotal}}</p>
+      
+      {{#if showDiscount}}
+        <p>Original: {{total}}</p>
+        <p>Discount Applied!</p>
+      {{/if}}
+    </div>
+  {{/let}}
+</template>
 ```
 
 `{{#let}}` computes values once and caches them for the block scope, reducing redundant calculations.
-
----
 
 ## 7. Advanced Patterns
 
@@ -1684,12 +1732,22 @@ function formatRelativeDate([date]) {
 export default helper(formatRelativeDate);
 ```
 
-```handlebars
-{{! app/components/user-card.hbs }}
-<p>Joined: {{format-relative-date @user.createdAt}}</p>
+```javascript
+// app/components/user-card.gjs
+import { formatRelativeDate } from '../helpers/format-relative-date';
 
-{{! app/components/post-card.hbs }}
-<p>Posted: {{format-relative-date @post.createdAt}}</p>
+<template>
+  <p>Joined: {{formatRelativeDate @user.createdAt}}</p>
+</template>
+```
+
+```javascript
+// app/components/post-card.gjs
+import { formatRelativeDate } from '../helpers/format-relative-date';
+
+<template>
+  <p>Posted: {{formatRelativeDate @post.createdAt}}</p>
+</template>
 ```
 
 **For helpers with state, use class-based helpers:**
@@ -1731,7 +1789,7 @@ Use modifiers (element modifiers) to handle DOM side effects and lifecycle event
 **Incorrect (component lifecycle hooks):**
 
 ```javascript
-// app/components/chart.js
+// app/components/chart.gjs
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
@@ -1747,11 +1805,11 @@ export default class ChartComponent extends Component {
     super.willDestroy(...arguments);
     this.chartInstance?.destroy();
   }
-}
-```
 
-```handlebars
-<canvas {{did-insert this.setupChart}}></canvas>
+  <template>
+    <canvas {{did-insert this.setupChart}}></canvas>
+  </template>
+}
 ```
 
 **Correct (reusable modifier):**
@@ -1780,8 +1838,13 @@ export default class ChartModifier extends Modifier {
 }
 ```
 
-```handlebars
-<canvas {{chart @config}}></canvas>
+```javascript
+// app/components/chart.gjs
+import chart from '../modifiers/chart';
+
+<template>
+  <canvas {{chart @config}}></canvas>
+</template>
 ```
 
 **For commonly needed modifiers, use ember-modifier helpers:**
@@ -1795,8 +1858,13 @@ export default modifier((element) => {
 });
 ```
 
-```handlebars
-<input {{autofocus}} type="text" />
+```javascript
+// app/components/input-field.gjs
+import autofocus from '../modifiers/autofocus';
+
+<template>
+  <input {{autofocus}} type="text" />
+</template>
 ```
 
 **Use ember-resize-observer-modifier for resize handling:**
@@ -1805,10 +1873,15 @@ export default modifier((element) => {
 ember install ember-resize-observer-modifier
 ```
 
-```handlebars
-<div {{on-resize this.handleResize}}>
-  Content that responds to size changes
-</div>
+```javascript
+// app/components/resizable.gjs
+import onResize from 'ember-resize-observer-modifier';
+
+<template>
+  <div {{on-resize this.handleResize}}>
+    Content that responds to size changes
+  </div>
+</template>
 ```
 
 Modifiers provide a clean, reusable way to manage DOM side effects without coupling to specific components.

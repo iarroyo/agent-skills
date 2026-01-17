@@ -12,7 +12,7 @@ Use modifiers (element modifiers) to handle DOM side effects and lifecycle event
 **Incorrect (component lifecycle hooks):**
 
 ```javascript
-// app/components/chart.js
+// app/components/chart.gjs
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
@@ -28,11 +28,11 @@ export default class ChartComponent extends Component {
     super.willDestroy(...arguments);
     this.chartInstance?.destroy();
   }
-}
-```
 
-```handlebars
-<canvas {{did-insert this.setupChart}}></canvas>
+  <template>
+    <canvas {{did-insert this.setupChart}}></canvas>
+  </template>
+}
 ```
 
 **Correct (reusable modifier):**
@@ -61,8 +61,13 @@ export default class ChartModifier extends Modifier {
 }
 ```
 
-```handlebars
-<canvas {{chart @config}}></canvas>
+```javascript
+// app/components/chart.gjs
+import chart from '../modifiers/chart';
+
+<template>
+  <canvas {{chart @config}}></canvas>
+</template>
 ```
 
 **For commonly needed modifiers, use ember-modifier helpers:**
@@ -76,8 +81,13 @@ export default modifier((element) => {
 });
 ```
 
-```handlebars
-<input {{autofocus}} type="text" />
+```javascript
+// app/components/input-field.gjs
+import autofocus from '../modifiers/autofocus';
+
+<template>
+  <input {{autofocus}} type="text" />
+</template>
 ```
 
 **Use ember-resize-observer-modifier for resize handling:**
@@ -86,10 +96,15 @@ export default modifier((element) => {
 ember install ember-resize-observer-modifier
 ```
 
-```handlebars
-<div {{on-resize this.handleResize}}>
-  Content that responds to size changes
-</div>
+```javascript
+// app/components/resizable.gjs
+import onResize from 'ember-resize-observer-modifier';
+
+<template>
+  <div {{on-resize this.handleResize}}>
+    Content that responds to size changes
+  </div>
+</template>
 ```
 
 Modifiers provide a clean, reusable way to manage DOM side effects without coupling to specific components.

@@ -11,65 +11,71 @@ All form inputs must have associated labels, and validation errors should be ann
 
 **Incorrect (missing labels and announcements):**
 
-```handlebars
-<form {{on "submit" this.handleSubmit}}>
-  <input 
-    type="email" 
-    value={{this.email}}
-    {{on "input" this.updateEmail}}
-    placeholder="Email"
-  />
-  
-  {{#if this.emailError}}
-    <span class="error">{{this.emailError}}</span>
-  {{/if}}
-  
-  <button type="submit">Submit</button>
-</form>
+```javascript
+// app/components/form.gjs
+<template>
+  <form {{on "submit" this.handleSubmit}}>
+    <input 
+      type="email" 
+      value={{this.email}}
+      {{on "input" this.updateEmail}}
+      placeholder="Email"
+    />
+    
+    {{#if this.emailError}}
+      <span class="error">{{this.emailError}}</span>
+    {{/if}}
+    
+    <button type="submit">Submit</button>
+  </form>
+</template>
 ```
 
 **Correct (with labels and announcements):**
 
-```handlebars
-<form {{on "submit" this.handleSubmit}}>
-  <div class="form-group">
-    <label for="email-input">
-      Email Address
-      {{#if this.isEmailRequired}}
-        <span aria-label="required">*</span>
+```javascript
+// app/components/form.gjs
+<template>
+  <form {{on "submit" this.handleSubmit}}>
+    <div class="form-group">
+      <label for="email-input">
+        Email Address
+        {{#if this.isEmailRequired}}
+          <span aria-label="required">*</span>
+        {{/if}}
+      </label>
+      
+      <input 
+        id="email-input"
+        type="email" 
+        value={{this.email}}
+        {{on "input" this.updateEmail}}
+        aria-describedby={{if this.emailError "email-error"}}
+        aria-invalid={{if this.emailError "true"}}
+        required={{this.isEmailRequired}}
+      />
+      
+      {{#if this.emailError}}
+        <span 
+          id="email-error" 
+          class="error"
+          role="alert"
+          aria-live="polite"
+        >
+          {{this.emailError}}
+        </span>
       {{/if}}
-    </label>
+    </div>
     
-    <input 
-      id="email-input"
-      type="email" 
-      value={{this.email}}
-      {{on "input" this.updateEmail}}
-      aria-describedby={{if this.emailError "email-error"}}
-      aria-invalid={{if this.emailError "true"}}
-      required={{this.isEmailRequired}}
-    />
-    
-    {{#if this.emailError}}
-      <span 
-        id="email-error" 
-        class="error"
-        role="alert"
-        aria-live="polite"
-      >
-        {{this.emailError}}
-      </span>
-    {{/if}}
-  </div>
-  
-  <button type="submit" disabled={{this.isSubmitting}}>
-    {{#if this.isSubmitting}}
-      <span aria-live="polite">Submitting...</span>
-    {{else}}
-      Submit
-    {{/if}}
-  </button>
-</form>
+    <button type="submit" disabled={{this.isSubmitting}}>
+      {{#if this.isSubmitting}}
+        <span aria-live="polite">Submitting...</span>
+      {{else}}
+        Submit
+      {{/if}}
+    </button>
+  </form>
+</template>
 ```
 
 **For complex forms, use ember-changeset-validations:**

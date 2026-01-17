@@ -12,19 +12,18 @@ Use services to manage shared state across components and routes instead of pass
 **Incorrect (prop drilling):**
 
 ```javascript
-// app/routes/dashboard.js
+// app/routes/dashboard.gjs
 export default class DashboardRoute extends Route {
   model() {
     return { currentTheme: 'dark' };
   }
-}
-```
 
-```handlebars
-{{! app/templates/dashboard.hbs }}
-<Header @theme={{@model.currentTheme}} />
-<Sidebar @theme={{@model.currentTheme}} />
-<MainContent @theme={{@model.currentTheme}} />
+  <template>
+    <Header @theme={{@model.currentTheme}} />
+    <Sidebar @theme={{@model.currentTheme}} />
+    <MainContent @theme={{@model.currentTheme}} />
+  </template>
+}
 ```
 
 **Correct (using service):**
