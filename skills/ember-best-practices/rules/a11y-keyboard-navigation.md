@@ -26,7 +26,17 @@ Ensure all interactive elements are keyboard accessible and focus management is 
 </template>
 ```
 
-**Correct (full keyboard support):**
+**Correct (full keyboard support with custom modifier):**
+
+```javascript
+// app/modifiers/focus-first.js
+import { modifier } from 'ember-modifier';
+
+export default modifier((element, [selector = 'button']) => {
+  // Focus first matching element when modifier runs
+  element.querySelector(selector)?.focus();
+});
+```
 
 ```javascript
 // app/components/dropdown.gjs
@@ -34,6 +44,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { fn } from '@ember/helper';
+import focusFirst from '../modifiers/focus-first';
 
 export default class DropdownComponent extends Component {
   @tracked isOpen = false;
@@ -63,11 +74,6 @@ export default class DropdownComponent extends Component {
       event.preventDefault();
       this.moveFocus(event.key === 'ArrowDown' ? 1 : -1);
     }
-  }
-  
-  @action
-  focusFirstItem(element) {
-    element.querySelector('[role="menuitem"] button')?.focus();
   }
   
   moveFocus(direction) {
@@ -101,7 +107,7 @@ export default class DropdownComponent extends Component {
         <ul 
           class="dropdown-menu" 
           role="menu"
-          {{did-insert this.focusFirstItem}}
+          {{focusFirst '[role="menuitem"] button'}}
           {{on "keydown" this.handleMenuKeyDown}}
         >
           <li role="menuitem">

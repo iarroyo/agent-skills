@@ -9,7 +9,7 @@ tags: modifiers, dom, lifecycle, advanced
 
 Use modifiers (element modifiers) to handle DOM side effects and lifecycle events in a reusable, composable way.
 
-**Incorrect (component lifecycle hooks):**
+**Incorrect (manual DOM manipulation in component):**
 
 ```javascript
 // app/components/chart.gjs
@@ -19,9 +19,9 @@ import { action } from '@ember/object';
 export default class ChartComponent extends Component {
   chartInstance = null;
   
-  @action
-  setupChart(element) {
-    this.chartInstance = new Chart(element, this.args.config);
+  constructor() {
+    super(...arguments);
+    // Can't access element here - element doesn't exist yet!
   }
   
   willDestroy() {
@@ -30,7 +30,8 @@ export default class ChartComponent extends Component {
   }
 
   <template>
-    <canvas {{did-insert this.setupChart}}></canvas>
+    <canvas id="chart-canvas"></canvas>
+    {{! Manual setup is error-prone and not reusable }}
   </template>
 }
 ```
