@@ -69,13 +69,13 @@ Integrate ember-a11y-testing into your test suite to automatically catch common 
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render, fillIn, click } from '@ember/test-helpers';
-import { hbs } from 'ember-cli-htmlbars';
+import UserForm from 'my-app/components/user-form';
 
 module('Integration | Component | user-form', function(hooks) {
   setupRenderingTest(hooks);
 
   test('it submits the form', async function(assert) {
-    await render(hbs`<UserForm />`);
+    await render(<template><UserForm /></template>);
     await fillIn('input', 'John');
     await click('button');
     assert.ok(true);
@@ -90,14 +90,14 @@ module('Integration | Component | user-form', function(hooks) {
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render, fillIn, click } from '@ember/test-helpers';
-import { hbs } from 'ember-cli-htmlbars';
 import a11yAudit from 'ember-a11y-testing/test-support/audit';
+import UserForm from 'my-app/components/user-form';
 
 module('Integration | Component | user-form', function(hooks) {
   setupRenderingTest(hooks);
 
   test('it submits the form', async function(assert) {
-    await render(hbs`<UserForm />`);
+    await render(<template><UserForm /></template>);
     
     // Automatically checks for a11y violations
     await a11yAudit();
@@ -4443,10 +4443,10 @@ tags: routes, templates, gjs, co-location
 
 Use co-located route templates with modern gjs syntax for better organization and maintainability.
 
-**Incorrect (separate template file):**
+**Incorrect (separate template file - old pattern):**
 
 ```javascript
-// app/routes/posts.js
+// app/routes/posts.js (separate file)
 import Route from '@ember/routing/route';
 
 export default class PostsRoute extends Route {
@@ -4454,16 +4454,16 @@ export default class PostsRoute extends Route {
     return this.store.request({ url: '/posts' });
   }
 }
-```
 
-```handlebars
-{{! app/templates/posts.hbs }}
-<h1>Posts</h1>
-<ul>
-  {{#each @model as |post|}}
-    <li>{{post.title}}</li>
-  {{/each}}
-</ul>
+// app/templates/posts.gjs (separate template file)
+<template>
+  <h1>Posts</h1>
+  <ul>
+    {{#each @model as |post|}}
+      <li>{{post.title}}</li>
+    {{/each}}
+  </ul>
+</template>
 ```
 
 **Correct (co-located route template):**
@@ -6401,14 +6401,15 @@ Use modern Ember testing patterns with `@ember/test-helpers` and `qunit-dom` for
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render, find, click } from '@ember/test-helpers';
-import hbs from 'htmlbars-inline-precompile';
+import UserCard from 'my-app/components/user-card';
 
 module('Integration | Component | user-card', function(hooks) {
   setupRenderingTest(hooks);
 
   test('it renders', async function(assert) {
-    await render(hbs`<UserCard />`);
+    await render(<template><UserCard /></template>);
     
+    // Using find() instead of qunit-dom
     assert.ok(find('.user-card'));
   });
 });
