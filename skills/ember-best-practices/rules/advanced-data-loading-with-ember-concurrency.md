@@ -75,20 +75,22 @@ class UserProfile extends Component {
 }
 ```
 
-**Correct (use ember-concurrency for USER input, return values not tracked state):**
+**Correct (use ember-concurrency for USER input with derived data patterns):**
 
 ```glimmer-js
 // app/components/search.gjs
 import Component from '@glimmer/component';
 import { restartableTask, timeout } from 'ember-concurrency';
+import { on } from '@ember/modifier';
+import { pick } from 'ember-composable-helpers';
 
 class Search extends Component {
   // CORRECT: For user-initiated search with debouncing
-  // Return the value, don't set tracked state
+  // Use derived data from TaskInstance API - lastSuccessful
   searchTask = restartableTask(async (query) => {
     await timeout(300); // Debounce user typing
     const response = await fetch(`/api/search?q=${query}`);
-    return response.json(); // Return, don't set tracked state
+    return response.json(); // Return value, don't set tracked state
   });
 
   <template>
@@ -97,20 +99,23 @@ class Search extends Component {
       {{on "input" (fn this.searchTask.perform (pick "target.value"))}}
     />
     
+    {{! Use derived data from task state - no tracked properties needed }}
     {{#if this.searchTask.isRunning}}
-      <div class="loading">Searching...</div>
+      <div>Searching...</div>
     {{/if}}
     
-    {{#if this.searchTask.last.isSuccessful}}
+    {{! lastSuccessful persists previous results while new search runs }}
+    {{#if this.searchTask.lastSuccessful}}
       <ul>
-        {{#each this.searchTask.last.value as |result|}}
+        {{#each this.searchTask.lastSuccessful.value as |result|}}
           <li>{{result.name}}</li>
         {{/each}}
       </ul>
     {{/if}}
     
+    {{! Show error from most recent failed attempt }}
     {{#if this.searchTask.last.isError}}
-      <div class="error">{{this.searchTask.last.error.message}}</div>
+      <div>Error: {{this.searchTask.last.error.message}}</div>
     {{/if}}
   </template>
 }
@@ -128,6 +133,8 @@ class Search extends Component {
 // app/components/form-submit.gjs
 import Component from '@glimmer/component';
 import { dropTask } from 'ember-concurrency';
+import { on } from '@ember/modifier';
+import { fn } from '@ember/helper';
 
 class FormSubmit extends Component {
   // dropTask prevents double-submit - perfect for user actions
@@ -150,6 +157,15 @@ class FormSubmit extends Component {
         Save
       {{/if}}
     </button>
+    
+    {{! Use lastSuccessful for success message - derived data }}
+    {{#if this.submitTask.lastSuccessful}}
+      <div>Saved successfully!</div>
+    {{/if}}
+    
+    {{#if this.submitTask.last.isError}}
+      <div>Error: {{this.submitTask.last.error.message}}</div>
+    {{/if}}
   </template>
 }
 ```
@@ -163,34 +179,61 @@ class FormSubmit extends Component {
 
 **Key Principles:**
 
-- **Use task return values** - read from `task.last.value`, don't set tracked state
-- **User-initiated only** - ember-concurrency is for handling user concurrency
-- **Data loading** - use `getPromiseState` from warp-drive/reactiveweb
-- **Avoid side effects** - don't modify component state inside tasks read during render
+- **Derive data, don't set it** - Use `task.lastSuccessful`, `task.last`, `task.isRunning` (derived from TaskInstance API)
+- **Use task return values** - Read from `task.lastSuccessful.value` or `task.last.value`, never set tracked state
+- **User-initiated only** - ember-concurrency is for handling user concurrency patterns
+- **Data loading** - Use `getPromiseState` from warp-drive/reactiveweb for non-user-initiated loading
+- **Avoid side effects** - Don't modify component state inside tasks that's read during render
+
+**TaskInstance API for Derived Data:**
+
+ember-concurrency provides a powerful derived data API through Task and TaskInstance:
+
+- `task.last` - The most recent TaskInstance (successful or failed)
+- `task.lastSuccessful` - The most recent successful TaskInstance (persists during new attempts)
+- `task.isRunning` - Derived boolean if any instance is running
+- `taskInstance.value` - The returned value from the task
+- `taskInstance.isError` - Derived boolean if this instance failed
+- `taskInstance.error` - The error if this instance failed
+
+This follows the **derived data pattern** - all state comes from the task itself, no tracked properties needed!
+
+References:
+- [TaskInstance API](https://ember-concurrency.com/api/TaskInstance.html)
+- [Task API](https://ember-concurrency.com/api/Task.html)
 
 **Migration from tracked state pattern:**
 
 ```glimmer-js
-// BEFORE (anti-pattern)
+// BEFORE (anti-pattern - setting tracked state)
 class Bad extends Component {
   @tracked data = null;
   
   fetchTask = task(async () => {
     this.data = await fetch('/api/data').then(r => r.json());
   });
+  
+  // template reads: {{this.data}}
 }
 
-// AFTER (correct)
+// AFTER (correct - using derived data from TaskInstance API)
 class Good extends Component {
   fetchTask = restartableTask(async () => {
     return fetch('/api/data').then(r => r.json());
   });
   
-  // Or better yet, for non-user-initiated loading:
+  // template reads: {{this.fetchTask.lastSuccessful.value}}
+  // All state derived from task - no tracked properties!
+}
+
+// Or better yet, for non-user-initiated loading:
+class Better extends Component {
   @cached
   get data() {
     return getPromiseState(fetch('/api/data').then(r => r.json()));
   }
+  
+  // template reads: {{#if this.data.isFulfilled}}{{this.data.value}}{{/if}}
 }
 ```
 
