@@ -418,11 +418,25 @@ const defaultHandlers = [
 **One-time handlers (don't persist):**
 
 ```javascript
-server.use(
-  http.get('/api/special', () => {
-    return HttpResponse.json({ data: 'special' });
-  }, { once: true })
-);
+// MSW handlers persist until resetHandlers() is called
+// The test helper automatically resets after each test
+// For a one-time handler within a test, manually reset:
+test('one-time response', async function(assert) {
+  server.use(
+    http.get('/api/special', () => {
+      return HttpResponse.json({ data: 'special' });
+    })
+  );
+  
+  // First request gets mocked response
+  await visit('/special');
+  assert.dom('[data-test-data]').hasText('special');
+  
+  // Reset to remove this handler
+  server.resetHandlers();
+  
+  // Subsequent requests will use default handlers or be unhandled
+});
 ```
 
 **Conditional responses:**
