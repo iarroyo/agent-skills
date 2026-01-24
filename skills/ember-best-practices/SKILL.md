@@ -122,9 +122,9 @@ Ember has excellent accessibility support through community addons:
 - **ember-a11y** - Route announcements and focus management
 - **ember-focus-trap** - Focus trapping for modals and dialogs
 - **ember-page-title** - Accessible page title management
-- **ember-changeset-validations** - Accessible form validation
+- **Platform-native validation** - Use browser's Constraint Validation API for accessible form validation
 
-These tools provide comprehensive a11y support with minimal configuration.
+These tools, combined with native web platform features, provide comprehensive a11y support with minimal configuration.
 
 ## Full Compiled Document
 
