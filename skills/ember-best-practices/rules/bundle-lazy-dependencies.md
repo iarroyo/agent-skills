@@ -23,35 +23,50 @@ class Dashboard extends Component {
 }
 ```
 
-**Correct (lazy loaded when needed):**
+**Correct (lazy loaded with error/loading state handling):**
 
 ```javascript
 import Component from '@glimmer/component';
-import { tracked } from '@glimmer/tracking';
-import { action } from '@ember/object';
+import { getPromiseState } from 'reactiveweb/promise';
 
 class Dashboard extends Component {
-  @tracked ChartComponent = null;
-  @tracked highlighter = null;
+  // Use getPromiseState to model promise state for error/loading handling
+  chartLoader = getPromiseState(async () => {
+    const { default: Chart } = await import('chart.js/auto');
+    return Chart;
+  });
+  
+  highlighterLoader = getPromiseState(async () => {
+    const { default: hljs } = await import('highlight.js');
+    return hljs;
+  });
 
-  @action
-  async loadChart() {
-    if (!this.ChartComponent) {
-      const { default: Chart } = await import('chart.js/auto');
-      this.ChartComponent = Chart;
-    }
-  }
+  loadChart = () => {
+    // Triggers lazy load, handles loading/error states automatically
+    return this.chartLoader.value;
+  };
 
-  @action
-  async highlightCode(code) {
-    if (!this.highlighter) {
-      const { default: hljs } = await import('highlight.js');
-      this.highlighter = hljs;
+  highlightCode = (code) => {
+    const hljs = this.highlighterLoader.value;
+    if (hljs) {
+      return hljs.highlightAuto(code);
     }
-    return this.highlighter.highlightAuto(code);
-  }
+    return code;
+  };
+
+  <template>
+    {{#if this.chartLoader.isLoading}}
+      <p>Loading chart library...</p>
+    {{else if this.chartLoader.isError}}
+      <p>Error loading chart: {{this.chartLoader.error.message}}</p>
+    {{else if this.chartLoader.isResolved}}
+      <canvas {{on "click" this.loadChart}}></canvas>
+    {{/if}}
+  </template>
 }
 ```
+
+**Note**: Always model promise state (loading/error/resolved) using `getPromiseState` from `reactiveweb/promise` to handle slow networks and errors properly.
 
 **Alternative (use template helper for components):**
 

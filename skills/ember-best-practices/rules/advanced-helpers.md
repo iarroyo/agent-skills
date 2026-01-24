@@ -35,10 +35,11 @@ class PostCard extends Component {
 }
 ```
 
-**Correct (reusable helper):**
+**Correct (reusable helper - co-located with component):**
 
 ```javascript
-// app/helpers/format-relative-date.js
+// app/components/post-list/format-relative-date.js
+// Co-locate with the component that uses it for better organization
 import { helper } from '@ember/component/helper';
 
 function formatRelativeDate([date]) {
@@ -55,6 +56,30 @@ function formatRelativeDate([date]) {
 
 export default helper(formatRelativeDate);
 ```
+
+**Alternative (shared helper in utils):**
+
+```javascript
+// app/utils/helpers/format-relative-date.js
+// Use utils/ directory for helpers shared across many components
+import { helper } from '@ember/component/helper';
+
+function formatRelativeDate([date]) {
+  const dateObj = new Date(date);
+  const now = new Date();
+  const diffMs = now - dateObj;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return dateObj.toLocaleDateString();
+}
+
+export default helper(formatRelativeDate);
+```
+
+**Note**: The `app/helpers/` directory has a smaller role in modern Ember. Prefer co-locating helpers with components for better modularity, or use `app/utils/` for truly shared helpers.
 
 ```javascript
 // app/components/user-card.gjs

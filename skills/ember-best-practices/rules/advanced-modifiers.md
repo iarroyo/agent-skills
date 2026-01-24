@@ -36,7 +36,24 @@ class Chart extends Component {
 }
 ```
 
-**Correct (reusable modifier):**
+**Correct (function modifier - preferred for simple side effects):**
+
+```javascript
+// app/modifiers/chart.js
+import { modifier } from 'ember-modifier';
+
+export default modifier((element, [config]) => {
+  // Initialize chart
+  const chartInstance = new Chart(element, config);
+  
+  // Return cleanup function
+  return () => {
+    chartInstance.destroy();
+  };
+});
+```
+
+**Also correct (class-based modifier for complex state):**
 
 ```javascript
 // app/modifiers/chart.js
@@ -70,6 +87,8 @@ import chart from '../modifiers/chart';
   <canvas {{chart @config}}></canvas>
 </template>
 ```
+
+**Use function modifiers** for simple side effects. Use class-based modifiers only when you need complex state management.
 
 **For commonly needed modifiers, use ember-modifier helpers:**
 

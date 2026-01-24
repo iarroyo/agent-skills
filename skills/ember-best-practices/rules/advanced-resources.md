@@ -44,27 +44,31 @@ class LiveData extends Component {
 }
 ```
 
-**Correct (using Resources):**
+**Correct (using Resources - preferred pattern):**
 
 ```javascript
 // app/components/live-data.gjs
 import Component from '@glimmer/component';
-import { resource } from 'ember-resources';
+import { resource, use } from 'ember-resources';
+
+// Define resource outside component class for better composition
+const liveData = resource(({ on }) => {
+  const poll = async () => {
+    const response = await fetch('/api/data');
+    return response.json();
+  };
+  
+  const intervalId = setInterval(poll, 5000);
+  
+  // Automatic cleanup
+  on.cleanup(() => clearInterval(intervalId));
+  
+  return poll();
+});
 
 class LiveData extends Component {
-  data = resource(({ on }) => {
-    const poll = async () => {
-      const response = await fetch('/api/data');
-      return response.json();
-    };
-    
-    const intervalId = setInterval(poll, 5000);
-    
-    // Automatic cleanup
-    on.cleanup(() => clearInterval(intervalId));
-    
-    return poll();
-  });
+  // Use the resource in component via @use decorator or directly
+  data = use(this, liveData);
 
   <template>
     <div>{{this.data.value}}</div>

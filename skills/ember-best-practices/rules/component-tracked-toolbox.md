@@ -14,22 +14,19 @@ For complex state patterns like maps, sets, and arrays that need fine-grained re
 ```javascript
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
-import { action } from '@ember/object';
 
 class TodoList extends Component {
   @tracked items = []; // Entire array replaced on every change
   
-  @action
-  addItem(item) {
+  addItem = (item) => {
     // Creates new array, invalidates all consumers
     this.items = [...this.items, item];
-  }
+  };
   
-  @action
-  removeItem(index) {
+  removeItem = (index) => {
     // Creates new array again
     this.items = this.items.filter((_, i) => i !== index);
-  }
+  };
 }
 ```
 
@@ -37,23 +34,21 @@ class TodoList extends Component {
 
 ```javascript
 import Component from '@glimmer/component';
-import { action } from '@ember/object';
 import { TrackedArray } from 'tracked-built-ins';
 
 class TodoList extends Component {
   items = new TrackedArray([]);
   
-  @action
-  addItem(item) {
+  // Use arrow functions for methods used in templates (no @action needed)
+  addItem = (item) => {
     // Efficiently adds to tracked array
     this.items.push(item);
-  }
+  };
   
-  @action
-  removeItem(index) {
+  removeItem = (index) => {
     // Efficiently removes from tracked array
     this.items.splice(index, 1);
-  }
+  };
 }
 ```
 
