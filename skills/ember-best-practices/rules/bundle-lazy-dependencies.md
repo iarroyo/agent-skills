@@ -67,16 +67,4 @@ class Dashboard extends Component {
 
 **Note**: Always model promise state (loading/error/resolved) using `getPromiseState` from `reactiveweb/promise` to handle slow networks and errors properly.
 
-**Alternative (use template helper for components):**
-
-```javascript
-// app/helpers/ensure-loaded.js
-import { helper } from '@ember/component/helper';
-
-export default helper(async function ensureLoaded([modulePath]) {
-  const module = await import(modulePath);
-  return module.default;
-});
-```
-
 Dynamic imports reduce initial bundle size by 30-50%, improving Time to Interactive.

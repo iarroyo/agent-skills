@@ -37,13 +37,12 @@ import { pluralize } from 'ember-inflector';
   </div>
 </template>```
 
-**Built-in helpers from Ember:**
+**Built-in and library helpers:**
 
 ```glimmer-js
 // app/components/conditional-content.gjs
-import { array } from '@ember/helper';
-import { fn, hash } from '@ember/helper';
-import { eq, not } from 'ember-truth-helpers';
+import { fn, hash } from '@ember/helper'; // Actually built-in to Ember
+import { eq, not } from 'ember-truth-helpers'; // From ember-truth-helpers addon
 
 <template>
   <div class="content">
@@ -62,22 +61,18 @@ import { eq, not } from 'ember-truth-helpers';
 **Custom helper with imports:**
 
 ```javascript
-// app/helpers/format-currency.js
-import { helper } from '@ember/component/helper';
-
-export function formatCurrency([amount], { currency = 'USD' }) {
+// app/utils/format-currency.js
+export function formatCurrency(amount, { currency = 'USD' } = {}) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency
   }).format(amount);
 }
-
-export default helper(formatCurrency);
 ```
 
 ```glimmer-js
 // app/components/price-display.gjs
-import { formatCurrency } from '../helpers/format-currency';
+import { formatCurrency } from '../utils/format-currency';
 
 <template>
   <div class="price">

@@ -1,28 +1,26 @@
 ---
-title: Use Built-in Helpers Effectively
+title: Use Helper Libraries Effectively
 category: template
 impact: medium
 ---
 
-# Use Built-in Helpers Effectively
+# Use Helper Libraries Effectively
 
-Leverage Ember's built-in helpers to write cleaner templates and avoid creating unnecessary custom helpers for common operations.
+Leverage community helper libraries to write cleaner templates and avoid creating unnecessary custom helpers for common operations.
 
 ## Problem
 
-Reinventing common functionality with custom helpers adds maintenance burden and bundle size when built-in helpers already provide the needed functionality.
+Reinventing common functionality with custom helpers adds maintenance burden and bundle size when well-maintained helper libraries already provide the needed functionality.
 
 **Incorrect:**
 ```glimmer-js
-// app/helpers/is-equal.js - Unnecessary custom helper
-import { helper } from '@ember/component/helper';
-
-export default helper(function isEqual([a, b]) {
+// app/utils/is-equal.js - Unnecessary custom helper
+export function isEqual(a, b) {
   return a === b;
-});
+}
 
 // app/components/user-badge.gjs
-import isEqual from '../helpers/is-equal';
+import { isEqual } from '../utils/is-equal';
 
 class UserBadge extends Component {
   <template>
@@ -34,29 +32,38 @@ class UserBadge extends Component {
 
 ## Solution
 
-Use built-in helpers that ship with Ember:
+**Note:** These helpers will be built into Ember 7 core, but currently require installing the respective addon packages.
+
+**Installation:**
+```bash
+npm install ember-truth-helpers ember-composable-helpers
+```
+
+Use helper libraries like `ember-truth-helpers` and `ember-composable-helpers`:
 
 **Correct:**
 ```glimmer-js
 // app/components/user-badge.gjs
 import Component from '@glimmer/component';
-import { eq } from '@ember/helper';
+import { eq } from 'ember-truth-helpers';
 
 class UserBadge extends Component {
   <template>
-    {{! Built-in eq helper }}
+    {{! eq helper from ember-truth-helpers }}
     {{#if (eq @user.role "admin")}}
       <span class="badge">Admin</span>
     {{/if}}
   </template>
 }```
 
-## Comparison Helpers
+## Comparison Helpers (ember-truth-helpers)
+
+**Installation:** `npm install ember-truth-helpers`
 
 ```glimmer-js
 // app/components/comparison-examples.gjs
 import Component from '@glimmer/component';
-import { eq, not, and, or, lt, lte, gt, gte } from '@ember/helper';
+import { eq, not, and, or, lt, lte, gt, gte } from 'ember-truth-helpers';
 
 class ComparisonExamples extends Component {
   <template>
@@ -78,13 +85,15 @@ class ComparisonExamples extends Component {
   </template>
 }```
 
-## Array and Object Helpers
+## Array and Object Helpers (ember-composable-helpers)
+
+**Installation:** `npm install ember-composable-helpers`
 
 ```glimmer-js
 // app/components/collection-helpers.gjs
 import Component from '@glimmer/component';
-import { array, hash } from '@ember/helper';
-import { get } from '@ember/helper';
+import { array, hash } from 'ember-composable-helpers/helpers';
+import { get } from 'ember-composable-helpers/helpers';
 
 class CollectionHelpers extends Component {
   <template>
@@ -108,7 +117,7 @@ class CollectionHelpers extends Component {
 ```glimmer-js
 // app/components/string-helpers.gjs
 import Component from '@glimmer/component';
-import { concat } from '@ember/helper';
+import { concat } from '@ember/helper'; // Built-in to Ember
 
 class StringHelpers extends Component {
   <template>
@@ -130,7 +139,7 @@ class StringHelpers extends Component {
 ```glimmer-js
 // app/components/action-helpers.gjs
 import Component from '@glimmer/component';
-import { fn } from '@ember/helper';
+import { fn } from '@ember/helper'; // Built-in to Ember
 import { on } from '@ember/modifier';
 
 class ActionHelpers extends Component {
@@ -164,7 +173,7 @@ class ActionHelpers extends Component {
 ```glimmer-js
 // app/components/conditional-inline.gjs
 import Component from '@glimmer/component';
-import { if as ifHelper } from '@ember/helper';
+import { if as ifHelper } from '@ember/helper'; // Built-in to Ember
 
 class ConditionalInline extends Component {
   <template>
@@ -189,7 +198,8 @@ class ConditionalInline extends Component {
 ```glimmer-js
 // app/components/dynamic-classes.gjs
 import Component from '@glimmer/component';
-import { concat, if as ifHelper, and } from '@ember/helper';
+import { concat, if as ifHelper } from '@ember/helper'; // Built-in to Ember
+import { and, not } from 'ember-truth-helpers';
 
 class DynamicClasses extends Component {
   <template>
@@ -210,6 +220,10 @@ class DynamicClasses extends Component {
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { cached } from '@glimmer/tracking';
+import { fn, concat } from '@ember/helper';
+import { on } from '@ember/modifier';
+import { eq } from 'ember-truth-helpers';
+import { array } from 'ember-composable-helpers/helpers';
 
 class FilteredList extends Component {
   @tracked filter = 'all';
@@ -245,10 +259,9 @@ class FilteredList extends Component {
 ```glimmer-js
 // app/components/user-profile-card.gjs
 import Component from '@glimmer/component';
-import { 
-  eq, not, and, or, if as ifHelper, 
-  concat, hash, array, fn, get 
-} from '@ember/helper';
+import { concat, if as ifHelper, fn } from '@ember/helper'; // Built-in to Ember
+import { eq, not, and, or } from 'ember-truth-helpers';
+import { hash, array, get } from 'ember-composable-helpers/helpers';
 import { on } from '@ember/modifier';
 
 class UserProfileCard extends Component {
@@ -292,44 +305,42 @@ class UserProfileCard extends Component {
 
 ## Performance Impact
 
-- **Built-in helpers**: ~0% overhead (compiled into efficient bytecode)
+- **Library helpers**: ~0% overhead (compiled into efficient bytecode)
 - **Custom helpers**: 5-15% overhead per helper call
 - **Inline logic**: Cleaner templates, better tree-shaking
 
 ## When to Use
 
-- **Built-ins**: For all common operations (equality, logic, arrays, strings)
-- **Custom helpers**: Only for domain-specific logic not covered by built-ins
+- **Library helpers**: For all common operations (equality, logic, arrays, strings)
+- **Custom helpers**: Only for domain-specific logic not covered by library helpers
 - **Component logic**: For complex operations that need @cached or multiple dependencies
 
-## Complete Built-in Helper Reference
+## Complete Helper Reference
 
-**Comparison:**
+**Note:** These helpers will be built into Ember 7 core. Until then:
+
+**Actually Built-in to Ember (from `@ember/helper`):**
+- `concat` - Concatenate strings
+- `fn` - Partial application / bind arguments
+- `if` - Ternary-like conditional value
+- `mut` - Create settable binding (use sparingly)
+
+**From `ember-truth-helpers` package:**
 - `eq` - Equality (===)
 - `not` - Negation (!)
 - `and` - Logical AND
 - `or` - Logical OR
 - `lt`, `lte`, `gt`, `gte` - Numeric comparisons
 
-**Collections:**
+**From `ember-composable-helpers` package:**
 - `array` - Create array inline
 - `hash` - Create object inline
 - `get` - Dynamic property access
-
-**Strings:**
-- `concat` - Concatenate strings
-
-**Actions:**
-- `fn` - Partial application / bind arguments
-
-**Conditionals:**
-- `if` - Ternary-like conditional value
-
-**Forms:**
-- `mut` - Create settable binding (use sparingly)
 
 ## References
 
 - [Ember Built-in Helpers](https://guides.emberjs.com/release/templates/built-in-helpers/)
 - [Template Helpers API](https://api.emberjs.com/ember/release/modules/@ember%2Fhelper)
 - [fn Helper Guide](https://guides.emberjs.com/release/components/helper-functions/)
+- [ember-truth-helpers](https://github.com/jmurphyau/ember-truth-helpers)
+- [ember-composable-helpers](https://github.com/DockYard/ember-composable-helpers)
