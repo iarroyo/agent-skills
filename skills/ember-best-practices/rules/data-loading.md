@@ -21,15 +21,21 @@ This guide covers patterns for loading and sharing data in Ember applications:
 
 **Incorrect (using ember-concurrency for data loading):**
 
-```glimmer-js
-// app/components/user-profile.gjs
+```glimmer-ts
+// app/components/user-profile.gts
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { task } from 'ember-concurrency';
 
-class UserProfile extends Component {
-  @tracked userData = null;
-  @tracked error = null;
+interface UserProfileSignature {
+  Args: {
+    userId: string;
+  };
+}
+
+class UserProfile extends Component<UserProfileSignature> {
+  @tracked userData: { name: string } | null = null;
+  @tracked error: Error | null = null;
 
   // WRONG: Setting tracked state inside task
   loadUserTask = task(async () => {
@@ -37,7 +43,7 @@ class UserProfile extends Component {
       const response = await fetch(`/api/users/${this.args.userId}`);
       this.userData = await response.json(); // Anti-pattern!
     } catch (e) {
-      this.error = e; // Anti-pattern!
+      this.error = e as Error; // Anti-pattern!
     }
   });
 
@@ -59,13 +65,19 @@ class UserProfile extends Component {
 
 **Correct (use getPromiseState):**
 
-```glimmer-js
-// app/components/user-profile.gjs
+```glimmer-ts
+// app/components/user-profile.gts
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
 
-class UserProfile extends Component {
+interface UserProfileSignature {
+  Args: {
+    userId: string;
+  };
+}
+
+class UserProfile extends Component<UserProfileSignature> {
   @cached
   get userData() {
     const promise = fetch(`/api/users/${this.args.userId}`)
@@ -101,15 +113,20 @@ Use the constructor when you need to fetch data once when the component is insta
 
 > **Important:** The constructor runs only once when the component is first created. It will **never** re-run when arguments change. If your fetch depends on reactive args that may change over time, use a `@cached` getter instead.
 
-```glimmer-js
-// app/components/dashboard.gjs
+```glimmer-ts
+// app/components/dashboard.gts
 import Component from '@glimmer/component';
 import { getPromiseState } from 'reactiveweb';
 
-class Dashboard extends Component {
-  #request;
+interface DashboardStats {
+  totalUsers: number;
+  activeSessions: number;
+}
 
-  constructor(owner, args) {
+class Dashboard extends Component {
+  #request: Promise<DashboardStats>;
+
+  constructor(owner: unknown, args: object) {
     super(owner, args);
     this.#request = fetch('/api/dashboard/stats').then(r => r.json());
   }
@@ -187,11 +204,17 @@ export default class Request<T> extends Component<RequestSignature<T>> {
 
 **Usage with named blocks:**
 
-```glimmer-js
-// app/components/order-list.gjs
+```glimmer-ts
+// app/components/order-list.gts
 import Request from './request';
 
-const fetchOrders = () => fetch('/api/orders').then(r => r.json());
+interface Order {
+  id: string;
+  status: string;
+}
+
+const fetchOrders = (): Promise<Order[]> =>
+  fetch('/api/orders').then(r => r.json());
 
 <template>
   <Request @fetch={{fetchOrders}}>
@@ -234,27 +257,27 @@ When multiple components need the same data simultaneously, avoid duplicate netw
 
 #### Service-based Request Caching
 
-```glimmer-js
-// app/services/data-cache.js
+```ts
+// app/services/data-cache.ts
 import Service from '@ember/service';
 import { getPromiseState } from 'reactiveweb';
 
 export default class DataCacheService extends Service {
-  #requests = new Map();
+  #requests = new Map<string, Promise<unknown>>();
 
-  fetch(key, fetchFn) {
+  fetch<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
     if (!this.#requests.has(key)) {
       const promise = fetchFn();
       this.#requests.set(key, promise);
     }
-    return this.#requests.get(key);
+    return this.#requests.get(key) as Promise<T>;
   }
 
-  getState(key, fetchFn) {
+  getState<T>(key: string, fetchFn: () => Promise<T>) {
     return getPromiseState(this.fetch(key, fetchFn));
   }
 
-  invalidate(key) {
+  invalidate(key: string) {
     this.#requests.delete(key);
   }
 }
@@ -262,18 +285,30 @@ export default class DataCacheService extends Service {
 
 **Components sharing the same request:**
 
-```glimmer-js
-// app/components/user-header.gjs
+```glimmer-ts
+// app/components/user-header.gts
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
 import { cached } from '@glimmer/tracking';
+import type DataCacheService from '../services/data-cache';
 
-class UserHeader extends Component {
-  @service dataCache;
+interface User {
+  name: string;
+  avatar: string;
+}
+
+interface UserHeaderSignature {
+  Args: {
+    userId: string;
+  };
+}
+
+class UserHeader extends Component<UserHeaderSignature> {
+  @service declare dataCache: DataCacheService;
 
   @cached
   get user() {
-    return this.dataCache.getState(
+    return this.dataCache.getState<User>(
       `user:${this.args.userId}`,
       () => fetch(`/api/users/${this.args.userId}`).then(r => r.json())
     );
@@ -290,15 +325,31 @@ class UserHeader extends Component {
 }
 ```
 
-```glimmer-js
-// app/components/user-sidebar.gjs - Same pattern, shares the request!
-class UserSidebar extends Component {
-  @service dataCache;
+```glimmer-ts
+// app/components/user-sidebar.gts - Same pattern, shares the request!
+import Component from '@glimmer/component';
+import { service } from '@ember/service';
+import { cached } from '@glimmer/tracking';
+import type DataCacheService from '../services/data-cache';
+
+interface User {
+  email: string;
+  role: string;
+}
+
+interface UserSidebarSignature {
+  Args: {
+    userId: string;
+  };
+}
+
+class UserSidebar extends Component<UserSidebarSignature> {
+  @service declare dataCache: DataCacheService;
 
   @cached
   get user() {
     // Same key = same promise = no duplicate request!
-    return this.dataCache.getState(
+    return this.dataCache.getState<User>(
       `user:${this.args.userId}`,
       () => fetch(`/api/users/${this.args.userId}`).then(r => r.json())
     );
@@ -319,13 +370,21 @@ class UserSidebar extends Component {
 
 Lift the Request component to a common parent and pass data down:
 
-```glimmer-js
-// app/components/user-page.gjs
+```glimmer-ts
+// app/components/user-page.gts
 import Request from './request';
 import UserHeader from './user-header';
 import UserSidebar from './user-sidebar';
 
-const fetchUser = (userId) => () =>
+interface User {
+  id: string;
+  name: string;
+  avatar: string;
+  email: string;
+  role: string;
+}
+
+const fetchUser = (userId: string) => (): Promise<User> =>
   fetch(`/api/users/${userId}`).then(r => r.json());
 
 <template>
@@ -339,35 +398,59 @@ const fetchUser = (userId) => () =>
 </template>
 ```
 
-```glimmer-js
-// app/components/user-header.gjs - Receives data as arg, no fetching
-<template>
+```glimmer-ts
+// app/components/user-header.gts - Receives data as arg, no fetching
+import type { TemplateOnlyComponent } from '@ember/component/template-only';
+
+interface User {
+  name: string;
+  avatar: string;
+}
+
+interface UserHeaderSignature {
+  Args: {
+    user: User;
+  };
+}
+
+const UserHeader: TemplateOnlyComponent<UserHeaderSignature> = <template>
   <header>
     <img src={{@user.avatar}} alt={{@user.name}} />
     <h1>{{@user.name}}</h1>
   </header>
-</template>
+</template>;
+
+export default UserHeader;
 ```
 
 #### Request Manager with TTL
 
 For applications with many shared requests needing cache expiration:
 
-```glimmer-js
-// app/services/request-manager.js
+```ts
+// app/services/request-manager.ts
 import Service from '@ember/service';
 import { getPromiseState } from 'reactiveweb';
 
+interface CacheEntry {
+  promise: Promise<unknown>;
+  timestamp: number;
+}
+
+interface RequestOptions {
+  ttl?: number;
+}
+
 export default class RequestManagerService extends Service {
-  #cache = new Map();
+  #cache = new Map<string, CacheEntry>();
   #defaultTTL = 5 * 60 * 1000; // 5 minutes
 
-  request(key, fetchFn, options = {}) {
+  request<T>(key: string, fetchFn: () => Promise<T>, options: RequestOptions = {}): Promise<T> {
     const ttl = options.ttl ?? this.#defaultTTL;
     const cached = this.#cache.get(key);
 
     if (cached && Date.now() - cached.timestamp < ttl) {
-      return cached.promise;
+      return cached.promise as Promise<T>;
     }
 
     const promise = fetchFn();
@@ -377,15 +460,15 @@ export default class RequestManagerService extends Service {
     return promise;
   }
 
-  getState(key, fetchFn, options) {
+  getState<T>(key: string, fetchFn: () => Promise<T>, options?: RequestOptions) {
     return getPromiseState(this.request(key, fetchFn, options));
   }
 
-  invalidate(key) {
+  invalidate(key: string) {
     this.#cache.delete(key);
   }
 
-  invalidatePattern(pattern) {
+  invalidatePattern(pattern: string) {
     for (const key of this.#cache.keys()) {
       if (key.includes(pattern)) {
         this.#cache.delete(key);
@@ -436,16 +519,21 @@ Load data in the route's `model` hook and pass it to first-level components. Thi
 - Only use for first-level components. For deeply nested components, use a service instead to avoid prop drilling.
 - Do not preload data that isn't immediately required. Routes block rendering until `model` resolves.
 
-```js
-// app/routes/user.js
+```ts
+// app/routes/user.ts
 import Route from '@ember/routing/route';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import type RouterService from '@ember/routing/router-service';
+
+interface UserRouteParams {
+  user_id: string;
+}
 
 export default class UserRoute extends Route {
-  @service router;
+  @service declare router: RouterService;
 
-  async model({ user_id }) {
+  async model({ user_id }: UserRouteParams) {
     const response = await fetch(`/api/users/${user_id}`);
     if (!response.ok) throw new Error(`Failed to load user (${response.status})`);
     return response.json();
@@ -454,7 +542,7 @@ export default class UserRoute extends Route {
   // Optional: intercept errors to handle specific cases (e.g., redirect on 403)
   // Return true to bubble up and render the error substate template
   @action
-  error(error) {
+  error(error: Error) {
     if (error.message.includes('403')) {
       this.router.replaceWith('login');
     } else {
@@ -464,8 +552,8 @@ export default class UserRoute extends Route {
 }
 ```
 
-```glimmer-js
-// app/templates/user.gjs
+```glimmer-ts
+// app/templates/user.gts
 import UserHeader from '../components/user-header';
 import UserProfile from '../components/user-profile';
 
@@ -478,13 +566,23 @@ import UserProfile from '../components/user-profile';
 </template>
 ```
 
-```glimmer-js
-// app/components/user-header.gjs - First-level, receives data directly
-<template>
+```glimmer-ts
+// app/components/user-header.gts - First-level, receives data directly
+import type { TemplateOnlyComponent } from '@ember/component/template-only';
+
+interface UserHeaderSignature {
+  Args: {
+    user: { name: string };
+  };
+}
+
+const UserHeader: TemplateOnlyComponent<UserHeaderSignature> = <template>
   <header>
     <h1>{{@user.name}}</h1>
   </header>
-</template>
+</template>;
+
+export default UserHeader;
 ```
 
 #### Loading & Error Substates (optional)
@@ -498,8 +596,8 @@ Since route `model` hooks block rendering until resolved, users see nothing whil
 
 For nested routes like `user.posts`, Ember searches upward through the hierarchy: `user.posts-loading` → `user.loading` / `user-loading` → `loading` / `application-loading`.
 
-```glimmer-js
-// app/templates/user-loading.gjs
+```glimmer-ts
+// app/templates/user-loading.gts
 // Shown automatically while the user route's model hook is pending
 <template>
   <div class="loading-spinner">
@@ -508,8 +606,8 @@ For nested routes like `user.posts`, Ember searches upward through the hierarchy
 </template>
 ```
 
-```glimmer-js
-// app/templates/loading.gjs
+```glimmer-ts
+// app/templates/loading.gts
 // Application-wide fallback for any route without a specific loading template
 <template>
   <div class="loading-spinner">
@@ -520,8 +618,8 @@ For nested routes like `user.posts`, Ember searches upward through the hierarchy
 
 **Error substate:** When a route's `model` hook rejects, Ember transitions to the error substate. The rejected error becomes the substate's model. The search hierarchy mirrors loading: `user-error` → `error` / `application-error`.
 
-```glimmer-js
-// app/templates/user-error.gjs
+```glimmer-ts
+// app/templates/user-error.gts
 // Shown automatically when the user route's model hook rejects
 <template>
   <div class="error-page">
@@ -535,7 +633,7 @@ For nested routes like `user.posts`, Ember searches upward through the hierarchy
 
 **When route loading causes prop drilling (avoid this):**
 
-```glimmer-js
+```glimmer-ts
 // BAD - Prop drilling through multiple levels
 <template>
   <UserPage @user={{@model}}>
@@ -552,11 +650,11 @@ Routes block rendering until the `model` hook resolves. Do not load data for com
 
 **Incorrect (preloading all tab data in route):**
 
-```js
-// app/routes/user.js
+```ts
+// app/routes/user.ts
 // BAD - Loads ALL data even if user only views one tab
 export default class UserRoute extends Route {
-  async model({ user_id }) {
+  async model({ user_id }: { user_id: string }) {
     const [user, posts, followers, settings] = await Promise.all([
       fetch(`/api/users/${user_id}`).then(r => r.json()),
       fetch(`/api/users/${user_id}/posts`).then(r => r.json()),
@@ -572,17 +670,27 @@ export default class UserRoute extends Route {
 
 Let each tab component load data when it becomes visible:
 
-```glimmer-js
-// app/components/user-posts-tab.gjs
+```glimmer-ts
+// app/components/user-posts-tab.gts
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
 
-class UserPostsTab extends Component {
+interface Post {
+  title: string;
+}
+
+interface UserPostsTabSignature {
+  Args: {
+    userId: string;
+  };
+}
+
+class UserPostsTab extends Component<UserPostsTabSignature> {
   @cached
   get posts() {
     // Only fetches when this component renders
-    const promise = fetch(`/api/users/${this.args.userId}/posts`)
+    const promise: Promise<Post[]> = fetch(`/api/users/${this.args.userId}/posts`)
       .then(r => r.json());
     return getPromiseState(promise);
   }
@@ -599,8 +707,8 @@ class UserPostsTab extends Component {
 }
 ```
 
-```glimmer-js
-// app/templates/user.gjs
+```glimmer-ts
+// app/templates/user.gts
 import UserPostsTab from '../components/user-posts-tab';
 import UserFollowersTab from '../components/user-followers-tab';
 
@@ -624,16 +732,21 @@ import UserFollowersTab from '../components/user-followers-tab';
 
 Use query params to load only the data needed for the current view:
 
-```js
-// app/routes/user.js
+```ts
+// app/routes/user.ts
 import Route from '@ember/routing/route';
+
+interface UserRouteParams {
+  user_id: string;
+  tab?: string;
+}
 
 export default class UserRoute extends Route {
   queryParams = {
     tab: { refreshModel: true }
   };
 
-  async model({ user_id, tab }) {
+  async model({ user_id, tab }: UserRouteParams) {
     // Always load base user data
     const user = await fetch(`/api/users/${user_id}`).then(r => r.json());
 
@@ -650,8 +763,8 @@ export default class UserRoute extends Route {
 }
 ```
 
-```glimmer-js
-// app/templates/user.gjs
+```glimmer-ts
+// app/templates/user.gts
 <template>
   <div class="user-page">
     <h1>{{@model.user.name}}</h1>
@@ -682,42 +795,51 @@ export default class UserRoute extends Route {
 
 The route `model` hook does **not** re-trigger when navigating back/forward in browser history. If you need fresh data on every route visit, use the router's `routeDidChange` event.
 
-```js
-// app/services/user-data.js
+```ts
+// app/services/user-data.ts
 import Service from '@ember/service';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
+import type RouterService from '@ember/routing/router-service';
+import type Transition from '@ember/routing/transition';
+
+interface User {
+  name: string;
+  email: string;
+}
 
 export default class UserDataService extends Service {
-  @service router;
+  @service declare router: RouterService;
 
-  @tracked currentUserId = null;
-  #promise = null;
+  @tracked currentUserId: string | null = null;
+  #promise: Promise<User> | null = null;
 
-  constructor() {
-    super(...arguments);
+  constructor(properties?: object) {
+    super(properties);
     // Listen for route changes (including back/forward navigation)
     this.router.on('routeDidChange', this.handleRouteChange);
   }
 
-  willDestroy() {
-    super.willDestroy(...arguments);
+  willDestroy(): void {
+    super.willDestroy();
     this.router.off('routeDidChange', this.handleRouteChange);
   }
 
-  handleRouteChange = (transition) => {
+  handleRouteChange = (transition: Transition) => {
     // Check if we're entering a user route
-    const userRouteInfo = transition.to?.find(route => route.name === 'user');
+    const userRouteInfo = transition.to?.find(
+      (route: { name: string }) => route.name === 'user'
+    );
 
     if (userRouteInfo) {
-      const userId = userRouteInfo.params.user_id;
+      const userId = userRouteInfo.params['user_id'] as string;
       this.loadUser(userId, { forceRefresh: true });
     }
   };
 
-  loadUser(userId, { forceRefresh = false } = {}) {
+  loadUser(userId: string, { forceRefresh = false } = {}) {
     if (forceRefresh || this.currentUserId !== userId) {
       this.currentUserId = userId;
       this.#promise = null; // Invalidate cache
@@ -739,28 +861,30 @@ export default class UserDataService extends Service {
 }
 ```
 
-```js
-// app/routes/user.js
+```ts
+// app/routes/user.ts
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
+import type UserDataService from '../services/user-data';
 
 export default class UserRoute extends Route {
-  @service userData;
+  @service declare userData: UserDataService;
 
-  model({ user_id }) {
+  model({ user_id }: { user_id: string }) {
     // Initial load - service handles subsequent refreshes via routeDidChange
     this.userData.loadUser(user_id);
   }
 }
 ```
 
-```glimmer-js
-// app/components/user-profile.gjs
+```glimmer-ts
+// app/components/user-profile.gts
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
+import type UserDataService from '../services/user-data';
 
 class UserProfile extends Component {
-  @service userData;
+  @service declare userData: UserDataService;
 
   <template>
     {{#if this.userData.user.isPending}}
@@ -782,15 +906,15 @@ class UserProfile extends Component {
 
 For query param changes, you can use `refreshModel: true`:
 
-```js
-// app/routes/users.js
+```ts
+// app/routes/users.ts
 export default class UsersRoute extends Route {
   queryParams = {
     page: { refreshModel: true },
     sort: { refreshModel: true }
   };
 
-  async model({ page, sort }) {
+  async model({ page, sort }: { page: number; sort: string }) {
     // This WILL re-run when page or sort query params change
     const response = await fetch(`/api/users?page=${page}&sort=${sort}`);
     return response.json();
@@ -810,26 +934,42 @@ This pattern enables:
 - Bookmarkable filtered views
 - Service-based reactivity for deeply nested components
 
-```js
-// app/services/products.js
+```ts
+// app/services/products.ts
 import Service from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
 
+interface Product {
+  name: string;
+  price: number;
+}
+
+interface ProductsResponse {
+  items: Product[];
+  totalPages: number;
+}
+
+interface ProductFilters {
+  category?: string | null;
+  sortBy?: string;
+  page?: number;
+}
+
 export default class ProductsService extends Service {
-  @tracked category = null;
+  @tracked category: string | null = null;
   @tracked sortBy = 'name';
   @tracked page = 1;
 
-  #promise = null;
-  #lastParams = null;
+  #promise: Promise<ProductsResponse> | null = null;
+  #lastParams: string | null = null;
 
-  get currentParams() {
+  get currentParams(): string {
     return `${this.category}-${this.sortBy}-${this.page}`;
   }
 
-  updateFilters({ category, sortBy, page }) {
+  updateFilters({ category, sortBy, page }: ProductFilters) {
     this.category = category ?? this.category;
     this.sortBy = sortBy ?? this.sortBy;
     this.page = page ?? this.page;
@@ -848,7 +988,7 @@ export default class ProductsService extends Service {
       const params = new URLSearchParams({
         category: this.category || '',
         sort: this.sortBy,
-        page: this.page
+        page: String(this.page)
       });
       this.#promise = fetch(`/api/products?${params}`).then(r => r.json());
     }
@@ -858,13 +998,20 @@ export default class ProductsService extends Service {
 }
 ```
 
-```js
-// app/routes/products.js
+```ts
+// app/routes/products.ts
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
+import type ProductsService from '../services/products';
+
+interface ProductsRouteParams {
+  category?: string;
+  sort?: string;
+  page?: number;
+}
 
 export default class ProductsRoute extends Route {
-  @service products;
+  @service declare products: ProductsService;
 
   queryParams = {
     category: { refreshModel: true },
@@ -872,7 +1019,7 @@ export default class ProductsRoute extends Route {
     page: { refreshModel: true }
   };
 
-  model({ category, sort, page }) {
+  model({ category, sort, page }: ProductsRouteParams) {
     // Route triggers service update from URL params
     this.products.updateFilters({
       category,
@@ -885,47 +1032,56 @@ export default class ProductsRoute extends Route {
 }
 ```
 
-```js
-// app/controllers/products.js
+```ts
+// app/controllers/products.ts
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
+import type ProductsService from '../services/products';
 
 export default class ProductsController extends Controller {
-  @service products;
+  @service declare products: ProductsService;
 
   queryParams = ['category', 'sort', 'page'];
 
   // Default values
-  category = null;
+  category: string | null = null;
   sort = 'name';
   page = 1;
 
   @action
-  updateCategory(category) {
+  updateCategory(category: string) {
     this.category = category; // Updates URL, triggers route model hook
   }
 
   @action
-  updateSort(sort) {
+  updateSort(sort: string) {
     this.sort = sort;
   }
 
   @action
-  goToPage(page) {
+  goToPage(page: number) {
     this.page = page;
   }
 }
 ```
 
-```glimmer-js
-// app/components/product-filters.gjs
+```glimmer-ts
+// app/components/product-filters.gts
 // Can be deeply nested - reads from service, not props
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
+import type ProductsService from '../services/products';
 
-class ProductFilters extends Component {
-  @service products;
+interface ProductFiltersSignature {
+  Args: {
+    onCategoryChange: (category: string) => void;
+    onSortChange: (sort: string) => void;
+  };
+}
+
+class ProductFilters extends Component<ProductFiltersSignature> {
+  @service declare products: ProductsService;
 
   <template>
     <div class="filters">
@@ -954,14 +1110,21 @@ class ProductFilters extends Component {
 }
 ```
 
-```glimmer-js
-// app/components/product-list.gjs
+```glimmer-ts
+// app/components/product-list.gts
 // Deeply nested - consumes reactive data from service
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
+import type ProductsService from '../services/products';
 
-class ProductList extends Component {
-  @service products;
+interface ProductListSignature {
+  Args: {
+    onPageChange: (page: number) => void;
+  };
+}
+
+class ProductList extends Component<ProductListSignature> {
+  @service declare products: ProductsService;
 
   <template>
     {{#if this.products.products.isPending}}
@@ -988,8 +1151,8 @@ class ProductList extends Component {
 }
 ```
 
-```glimmer-js
-// app/templates/products.gjs
+```glimmer-ts
+// app/templates/products.gts
 import ProductFilters from '../components/product-filters';
 import ProductList from '../components/product-list';
 
@@ -1021,20 +1184,24 @@ Use ember-concurrency for managing **user-initiated** async operations. It provi
 
 **Incorrect (manual async handling):**
 
-```glimmer-js
-// app/components/search.gjs
+```glimmer-ts
+// app/components/search.gts
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
+interface SearchResult {
+  name: string;
+}
+
 class Search extends Component {
-  @tracked results = [];
+  @tracked results: SearchResult[] = [];
   @tracked isSearching = false;
-  currentRequest = null;
+  currentRequest: AbortController | null = null;
 
   @action
-  async search(event) {
-    const query = event.target.value;
+  async search(event: Event) {
+    const query = (event.target as HTMLInputElement).value;
 
     // Manual cancelation - error-prone
     if (this.currentRequest) {
@@ -1051,7 +1218,7 @@ class Search extends Component {
       });
       this.results = await response.json();
     } catch (e) {
-      if (e.name !== 'AbortError') {
+      if ((e as Error).name !== 'AbortError') {
         console.error(e);
       }
     } finally {
@@ -1068,18 +1235,22 @@ class Search extends Component {
 
 **Correct (using ember-concurrency):**
 
-```glimmer-js
-// app/components/search.gjs
+```glimmer-ts
+// app/components/search.gts
 import Component from '@glimmer/component';
 import { restartableTask, timeout } from 'ember-concurrency';
 import { on } from '@ember/modifier';
 
+interface SearchResult {
+  name: string;
+}
+
 class Search extends Component {
-  searchTask = restartableTask(async (event) => {
-    const query = event.target.value;
+  searchTask = restartableTask(async (event: Event) => {
+    const query = (event.target as HTMLInputElement).value;
     await timeout(300); // Debounce
     const response = await fetch(`/api/search?q=${query}`);
-    return response.json(); // Return, don't set @tracked
+    return response.json() as Promise<SearchResult[]>; // Return, don't set @tracked
   });
 
   <template>
@@ -1108,19 +1279,25 @@ class Search extends Component {
 
 Choose the right modifier for your concurrency pattern:
 
-```glimmer-js
+```glimmer-ts
 import Component from '@glimmer/component';
 import { dropTask, enqueueTask, restartableTask } from 'ember-concurrency';
 
-class FormActions extends Component {
+interface FormActionsSignature {
+  Args: {
+    data: Record<string, unknown>;
+  };
+}
+
+class FormActions extends Component<FormActionsSignature> {
   // restartableTask: Cancels previous, starts new (search/autocomplete)
-  searchTask = restartableTask(async (query) => {
+  searchTask = restartableTask(async (query: string) => {
     const response = await fetch(`/api/search?q=${query}`);
     return response.json();
   });
 
   // dropTask: Ignores new requests while running (prevent double-submit)
-  saveTask = dropTask(async (data) => {
+  saveTask = dropTask(async (data: Record<string, unknown>) => {
     const response = await fetch('/api/save', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -1129,7 +1306,7 @@ class FormActions extends Component {
   });
 
   // enqueueTask: Queues requests sequentially
-  processTask = enqueueTask(async (item) => {
+  processTask = enqueueTask(async (item: Record<string, unknown>) => {
     const response = await fetch('/api/process', {
       method: 'POST',
       body: JSON.stringify(item)
