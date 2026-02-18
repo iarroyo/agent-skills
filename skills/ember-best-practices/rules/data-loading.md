@@ -109,12 +109,12 @@ class UserProfile extends Component<UserProfileSignature> {
   }
 
   <template>
-    {{#if this.userData.isPending}}
+    {{#if this.userData.isLoading}}
       <div>Loading...</div>
-    {{else if this.userData.isRejected}}
-      <div>Error: {{this.userData.error.message}}</div>
-    {{else if this.userData.isFulfilled}}
-      <h1>{{this.userData.value.name}}</h1>
+    {{else if this.userData.error}}
+      <div>Error: {{this.userData.error.reason}}</div>
+    {{else if this.userData.resolved}}
+      <h1>{{this.userData.resolved.name}}</h1>
     {{/if}}
   </template>
 }
@@ -159,14 +159,14 @@ class Dashboard extends Component {
   }
 
   <template>
-    {{#if this.stats.isPending}}
+    {{#if this.stats.isLoading}}
       <div class="skeleton-loader">Loading dashboard...</div>
-    {{else if this.stats.isRejected}}
-      <div class="error">Failed to load: {{this.stats.error.message}}</div>
-    {{else if this.stats.isFulfilled}}
+    {{else if this.stats.error}}
+      <div class="error">Failed to load: {{this.stats.error.reason}}</div>
+    {{else if this.stats.resolved}}
       <div class="dashboard">
-        <p>Total users: {{this.stats.value.totalUsers}}</p>
-        <p>Active sessions: {{this.stats.value.activeSessions}}</p>
+        <p>Total users: {{this.stats.resolved.totalUsers}}</p>
+        <p>Active sessions: {{this.stats.resolved.activeSessions}}</p>
       </div>
     {{/if}}
   </template>
@@ -186,6 +186,7 @@ Create a reusable `Request` component for declarative, composable data loading w
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
+import type { Error as PromiseError } from 'reactiveweb/get-promise-state';
 
 interface RequestSignature<T> {
   Args: {
@@ -193,7 +194,7 @@ interface RequestSignature<T> {
   };
   Blocks: {
     loading: [];
-    error: [error: Error];
+    error: [error: PromiseError];
     default: [data: T];
   };
 }
@@ -206,20 +207,20 @@ export default class Request<T> extends Component<RequestSignature<T>> {
   }
 
   <template>
-    {{#if this.state.isPending}}
+    {{#if this.state.isLoading}}
       {{#if (has-block "loading")}}
         {{yield to="loading"}}
       {{else}}
         <div>Loading...</div>
       {{/if}}
-    {{else if this.state.isRejected}}
+    {{else if this.state.error}}
       {{#if (has-block "error")}}
         {{yield this.state.error to="error"}}
       {{else}}
-        <div>Error: {{this.state.error.message}}</div>
+        <div>Error: {{this.state.error.reason}}</div>
       {{/if}}
-    {{else if this.state.isFulfilled}}
-      {{yield this.state.value}}
+    {{else if this.state.resolved}}
+      {{yield this.state.resolved}}
     {{/if}}
   </template>
 }
@@ -250,7 +251,7 @@ const fetchOrders = (): Promise<Order[]> =>
 
     <:error as |error|>
       <div class="error-banner">
-        <p>Failed to load orders: {{error.message}}</p>
+        <p>Failed to load orders: {{error.reason}}</p>
         <button type="button">Retry</button>
       </div>
     </:error>
@@ -336,10 +337,10 @@ class UserHeader extends Component<UserHeaderSignature> {
   }
 
   <template>
-    {{#if this.user.isFulfilled}}
+    {{#if this.user.resolved}}
       <header>
-        <img src={{this.user.value.avatar}} alt={{this.user.value.name}} />
-        <h1>{{this.user.value.name}}</h1>
+        <img src={{this.user.resolved.avatar}} alt={{this.user.resolved.name}} />
+        <h1>{{this.user.resolved.name}}</h1>
       </header>
     {{/if}}
   </template>
@@ -377,10 +378,10 @@ class UserSidebar extends Component<UserSidebarSignature> {
   }
 
   <template>
-    {{#if this.user.isFulfilled}}
+    {{#if this.user.resolved}}
       <aside>
-        <p>Email: {{this.user.value.email}}</p>
-        <p>Role: {{this.user.value.role}}</p>
+        <p>Email: {{this.user.resolved.email}}</p>
+        <p>Role: {{this.user.resolved.role}}</p>
       </aside>
     {{/if}}
   </template>
@@ -717,10 +718,10 @@ class UserPostsTab extends Component<UserPostsTabSignature> {
   }
 
   <template>
-    {{#if this.posts.isPending}}
+    {{#if this.posts.isLoading}}
       <div>Loading posts...</div>
-    {{else if this.posts.isFulfilled}}
-      {{#each this.posts.value as |post|}}
+    {{else if this.posts.resolved}}
+      {{#each this.posts.resolved as |post|}}
         <article>{{post.title}}</article>
       {{/each}}
     {{/if}}
@@ -870,7 +871,7 @@ export default class UserDataService extends Service {
   @cached
   get user() {
     if (!this.currentUserId) {
-      return { isPending: false, isFulfilled: false, isRejected: false, value: null };
+      return { isLoading: false, error: null, resolved: null };
     }
 
     if (!this.#promise) {
@@ -908,11 +909,11 @@ class UserProfile extends Component {
   @service declare userData: UserDataService;
 
   <template>
-    {{#if this.userData.user.isPending}}
+    {{#if this.userData.user.isLoading}}
       <div>Loading...</div>
-    {{else if this.userData.user.isFulfilled}}
-      <h1>{{this.userData.user.value.name}}</h1>
-      <p>{{this.userData.user.value.email}}</p>
+    {{else if this.userData.user.resolved}}
+      <h1>{{this.userData.user.resolved.name}}</h1>
+      <p>{{this.userData.user.resolved.email}}</p>
     {{/if}}
   </template>
 }
@@ -1148,13 +1149,13 @@ class ProductList extends Component<ProductListSignature> {
   @service declare products: ProductsService;
 
   <template>
-    {{#if this.products.products.isPending}}
+    {{#if this.products.products.isLoading}}
       <div class="loading">Loading products...</div>
-    {{else if this.products.products.isRejected}}
-      <div class="error">Failed to load: {{this.products.products.error.message}}</div>
-    {{else if this.products.products.isFulfilled}}
+    {{else if this.products.products.error}}
+      <div class="error">Failed to load: {{this.products.products.error.reason}}</div>
+    {{else if this.products.products.resolved}}
       <ul class="product-grid">
-        {{#each this.products.products.value.items as |product|}}
+        {{#each this.products.products.resolved.items as |product|}}
           <li class="product-card">
             <h3>{{product.name}}</h3>
             <p>{{product.price}}</p>
@@ -1164,7 +1165,7 @@ class ProductList extends Component<ProductListSignature> {
 
       <Pagination
         @currentPage={{this.products.page}}
-        @totalPages={{this.products.products.value.totalPages}}
+        @totalPages={{this.products.products.resolved.totalPages}}
         @onPageChange={{@onPageChange}}
       />
     {{/if}}
