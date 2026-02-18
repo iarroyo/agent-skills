@@ -275,8 +275,6 @@ When multiple components need the same data simultaneously, avoid duplicate netw
 | Service caching | Multiple unrelated components need same data |
 | Parent Request | Components are in the same subtree |
 | Request manager | Many shared requests with TTL/invalidation needs |
-| Route model | First-level components only (avoid prop drilling) |
-| URL state + Service | Shareable/bookmarkable state with deep component trees |
 
 #### Service-based Request Caching
 
