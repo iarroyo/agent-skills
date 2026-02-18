@@ -99,6 +99,8 @@ For data that should load immediately when a component renders (not triggered by
 
 Use the constructor when you need to fetch data once when the component is instantiated.
 
+> **Important:** The constructor runs only once when the component is first created. It will **never** re-run when arguments change. If your fetch depends on reactive args that may change over time, use a `@cached` getter instead.
+
 ```glimmer-js
 // app/components/dashboard.gjs
 import Component from '@glimmer/component';
@@ -139,13 +141,24 @@ Use `@cached` when the fetch depends on reactive arguments - automatically re-fe
 
 Create a reusable `Request` component for declarative, composable data loading with named blocks:
 
-```glimmer-js
-// app/components/request.gjs
+```glimmer-ts
+// app/components/request.gts
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { getPromiseState } from 'reactiveweb';
 
-export default class Request extends Component {
+interface RequestSignature<T> {
+  Args: {
+    fetch: () => Promise<T>;
+  };
+  Blocks: {
+    loading: [];
+    error: [error: Error];
+    default: [data: T];
+  };
+}
+
+export default class Request<T> extends Component<RequestSignature<T>> {
   @cached
   get state() {
     const promise = this.args.fetch();
@@ -384,7 +397,7 @@ export default class RequestManagerService extends Service {
 
 **Important: Avoid body stream consumption errors**
 
-Always cache the promise that resolves to parsed data, not the raw Response:
+A `Response` body can only be consumed once (via `.json()`, `.text()`, etc.). If you cache the raw `fetch()` promise and multiple consumers each call `.json()` on the resolved `Response`, the second consumer will throw `"Response: body stream already read"`. Use `Response.clone()` to ensure each consumer gets its own body stream:
 
 ```js
 // WRONG - causes "body stream already consumed" errors
@@ -395,7 +408,17 @@ getUser(id) {
   return this.#cache.get(id).then(r => r.json()); // Second call fails!
 }
 
-// CORRECT - cache the fully resolved data promise
+// CORRECT - clone the Response before consuming the body
+// Each consumer gets a clone, so the original Response stays unconsumed
+getUser(id) {
+  if (!this.#cache.has(id)) {
+    this.#cache.set(id, fetch(`/api/users/${id}`));
+  }
+  return this.#cache.get(id).then(r => r.clone().json());
+}
+
+// ALSO CORRECT - cache the fully resolved data promise
+// Sidesteps the issue entirely since all consumers share the parsed result
 getUser(id) {
   if (!this.#cache.has(id)) {
     const promise = fetch(`/api/users/${id}`).then(r => r.json());
@@ -416,11 +439,27 @@ Load data in the route's `model` hook and pass it to first-level components. Thi
 ```js
 // app/routes/user.js
 import Route from '@ember/routing/route';
+import { action } from '@ember/object';
+import { service } from '@ember/service';
 
 export default class UserRoute extends Route {
+  @service router;
+
   async model({ user_id }) {
     const response = await fetch(`/api/users/${user_id}`);
+    if (!response.ok) throw new Error(`Failed to load user (${response.status})`);
     return response.json();
+  }
+
+  // Optional: intercept errors to handle specific cases (e.g., redirect on 403)
+  // Return true to bubble up and render the error substate template
+  @action
+  error(error) {
+    if (error.message.includes('403')) {
+      this.router.replaceWith('login');
+    } else {
+      return true;
+    }
   }
 }
 ```
@@ -447,6 +486,52 @@ import UserProfile from '../components/user-profile';
   </header>
 </template>
 ```
+
+#### Loading & Error Substates (optional)
+
+Since route `model` hooks block rendering until resolved, users see nothing while data loads. Ember provides **loading and error substates** to give feedback during transitions. These are not added to `router.js` — they exist implicitly as part of each route.
+
+**Loading substate:** Ember looks for a loading template while a route's `model` hook is pending. For a route named `user`, it searches in order:
+
+1. `user-loading` (sibling template)
+2. `loading` or `application-loading` (application-level fallback)
+
+For nested routes like `user.posts`, Ember searches upward through the hierarchy: `user.posts-loading` → `user.loading` / `user-loading` → `loading` / `application-loading`.
+
+```glimmer-js
+// app/templates/user-loading.gjs
+// Shown automatically while the user route's model hook is pending
+<template>
+  <div class="loading-spinner">
+    <p>Loading user...</p>
+  </div>
+</template>
+```
+
+```glimmer-js
+// app/templates/loading.gjs
+// Application-wide fallback for any route without a specific loading template
+<template>
+  <div class="loading-spinner">
+    <p>Loading...</p>
+  </div>
+</template>
+```
+
+**Error substate:** When a route's `model` hook rejects, Ember transitions to the error substate. The rejected error becomes the substate's model. The search hierarchy mirrors loading: `user-error` → `error` / `application-error`.
+
+```glimmer-js
+// app/templates/user-error.gjs
+// Shown automatically when the user route's model hook rejects
+<template>
+  <div class="error-page">
+    <h2>Failed to load user</h2>
+    <p>{{@model.message}}</p>
+  </div>
+</template>
+```
+
+> **Note:** Loading and error substates only apply to route `model` hooks. They do not affect component-level data loading with `getPromiseState`. See the route example above for programmatic error handling with the `error` action.
 
 **When route loading causes prop drilling (avoid this):**
 
