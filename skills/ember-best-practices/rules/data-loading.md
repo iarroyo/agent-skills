@@ -7,6 +7,29 @@ tags: ember-concurrency, tasks, data-loading, concurrency-patterns, getPromiseSt
 
 ## Data Loading and Async Concurrency Patterns
 
+### Table of Contents
+
+1. [Why Not ember-concurrency for Data Loading?](#why-not-ember-concurrency-for-data-loading)
+2. [Initial Data Loading Patterns](#initial-data-loading-patterns)
+   - [Constructor-based Loading](#constructor-based-loading)
+   - [Reactive Cached Getter](#reactive-cached-getter)
+   - [Reusable Request Component](#reusable-request-component)
+3. [Shared Requests Across Multiple Components](#shared-requests-across-multiple-components)
+   - [Service-based Request Caching](#service-based-request-caching)
+   - [Parent Request with Data Distribution](#parent-request-with-data-distribution)
+   - [Request Manager with TTL](#request-manager-with-ttl)
+4. [Route-based Data Loading](#route-based-data-loading)
+   - [Loading & Error Substates](#loading--error-substates-optional)
+   - [Avoid Preloading Data That Isn't Required](#avoid-preloading-data-that-isnt-required)
+   - [Refreshing Data on Back/Forward Navigation](#refreshing-data-on-backforward-navigation)
+5. [URL State Management with Query Params](#url-state-management-with-query-params)
+6. [User Input Concurrency with ember-concurrency](#user-input-concurrency-with-ember-concurrency)
+   - [Task Modifiers](#task-modifiers)
+   - [TaskInstance API for Derived Data](#taskinstance-api-for-derived-data)
+7. [Quick Reference](#quick-reference)
+
+---
+
 This guide covers patterns for loading and sharing data in Ember applications:
 
 - **Initial data loading**: Constructor, `@cached` getter, and Request component patterns
@@ -1378,5 +1401,5 @@ ember-concurrency provides derived state - no tracked properties needed:
 
 References:
 - [ember-concurrency](https://ember-concurrency.com/)
-- [TaskInstance API](https://ember-concurrency.com/api/TaskInstance.html)
+
 - [reactiveweb](https://github.com/universal-ember/reactiveweb)
